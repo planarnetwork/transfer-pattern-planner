@@ -4,7 +4,7 @@ import { Readable } from "stream";
 import { TimeParser } from "./TimeParser";
 import { Service } from "./Service";
 import { CalendarIndex, StopID, StopIndex, Time, Trip } from "./Gtfs";
-import { Transfer } from "..";
+import { Transfer } from "../journey/Journey";
 
 /**
  * Returns trips, transfers, interchange time and calendars from a GTFS zip.

@@ -1,6 +1,7 @@
 import * as chai from "chai";
 import { JourneyFactory } from "./JourneyFactory";
-import { Duration, StopID, Time, TimetableLeg, Transfer } from "..";
+import { Duration, StopID, Time } from "../gtfs/Gtfs";
+import { TimetableLeg, Transfer } from "./Journey";
 
 describe("JourneyFactory", () => {
   const factory = new JourneyFactory();
