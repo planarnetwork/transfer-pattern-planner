@@ -1,4 +1,4 @@
-import { Duration, StopID, Time, TimetableLeg, Transfer } from "..";
+import { Duration, isTransfer, StopID, Time, TimetableLeg, Transfer } from "..";
 import { AnyLeg } from "../journey/Journey";
 import { JourneyLegs } from "./TransferPatternPlanner";
 
@@ -27,7 +27,7 @@ export class TransferPatternNode {
 
     const arrivalTime = isTransfer(leg)
       ? departureTime + leg.duration
-      : leg.callingPoints[leg.callingPoints.length - 1].arrivalTime;
+      : leg.stopTimes[leg.stopTimes.length - 1].arrivalTime;
 
     return this.children.flatMap(p => p.getJourneys([...legs, leg], arrivalTime + this.interchange));
   }

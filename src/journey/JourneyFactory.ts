@@ -1,11 +1,14 @@
 import { AnyLeg, isTransfer, Journey } from "./Journey";
-import { StopID, StopTime, Time, Trip } from "../gtfs/Gtfs";
+import { Time } from "../gtfs/Gtfs";
 
 /**
- * Creates journeys from the connection index created by the connection scan algorithm.
+ * Creates journeys from an array of legs.
  */
 export class JourneyFactory {
 
+  /**
+   * Take the given legs and calculate the journey origin, destination, departureTime and arrivalTime
+   */
   public getJourney(legs: AnyLeg[]): Journey {
     return {
       origin: legs[0].origin,
