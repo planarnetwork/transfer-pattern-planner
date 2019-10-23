@@ -1,6 +1,6 @@
-import { Duration, isTransfer, StopID, Time, TimetableLeg, Transfer } from "..";
-import { AnyLeg } from "../journey/Journey";
+import { AnyLeg, isTransfer, TimetableLeg, Transfer } from "../journey/Journey";
 import { JourneyLegs } from "./TransferPatternPlanner";
+import { Duration, Time } from "../gtfs/Gtfs";
 
 export class TransferPatternNode {
 
@@ -8,9 +8,9 @@ export class TransferPatternNode {
   private transferIndex: number = 0;
 
   constructor(
-    private readonly timetableLegs: TimetableLeg[],
+    public readonly timetableLegs: TimetableLeg[],
     private readonly transfers: Transfer[],
-    private readonly children: TransferPatternNode[],
+    public children: TransferPatternNode[],
     private readonly interchange: Duration
   ) {}
 
@@ -48,11 +48,11 @@ export class TransferPatternNode {
     return null;
   }
 
-  private findTransfer(departureTime: Time): Transfer | null {
+  public findTransfer(departureTime: Time): Transfer | null {
     for (; this.transferIndex < this.transfers.length; this.transferIndex++) {
       const leg = this.transfers[this.transferIndex];
 
-      if (leg.startTime >= departureTime) {
+      if (leg.startTime <= departureTime && leg.endTime >= departureTime) {
         return leg;
       }
     }

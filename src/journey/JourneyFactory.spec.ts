@@ -50,7 +50,7 @@ describe("JourneyFactory", () => {
 
 });
 
-function tt(origin: StopID, destination: StopID, departureTime: Time, arrivalTime: Time): TimetableLeg {
+export function tt(origin: StopID, destination: StopID, departureTime: Time, arrivalTime: Time): TimetableLeg {
   const stopTimes = [
     { stop: origin, pickUp: true, dropOff: true, arrivalTime: departureTime, departureTime: departureTime },
     { stop: destination, pickUp: true, dropOff: true, arrivalTime: arrivalTime, departureTime: arrivalTime }
@@ -64,7 +64,7 @@ function tt(origin: StopID, destination: StopID, departureTime: Time, arrivalTim
   };
 }
 
-function tr(origin: StopID, destination: StopID, duration: Duration): Transfer {
+export function tr(origin: StopID, destination: StopID, duration: Duration): Transfer {
   return {
     origin,
     destination,

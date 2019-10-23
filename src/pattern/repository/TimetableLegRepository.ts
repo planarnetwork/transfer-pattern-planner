@@ -1,7 +1,7 @@
 import { TripIndex } from "../../gtfs/GtfsLoader";
 import { DateNumber, DayOfWeek, StopID, StopTime, Trip } from "../../gtfs/Gtfs";
 import { TimetableLeg } from "../../journey/Journey";
-//import * as memoize from "memoize-class-decorator";
+import * as memoize from "memoized-class-decorator";
 
 /**
  * Provides access to the timetable legs by storing an index of every trip that runs between every origin and
@@ -18,7 +18,7 @@ export class TimetableLegRepository {
    *
    * Results are ordered by arrival time.
    */
-//  @memoize
+  @memoize
   public getLegs(origin: StopID, destination: StopID, date: DateNumber, dow: DayOfWeek): TimetableLeg[] {
     if (!this.index[origin] || !this.index[origin][destination]) {
       return [];
