@@ -51,8 +51,7 @@ export class TransferPatternFactory {
   }
 }
 
-
-export interface TransferPatternTreeNode {
+interface TransferPatternTreeNode {
   stop: StopID,
   parent: TransferPatternTreeNode,
   children: Record<StopID, TransferPatternTreeNode>
