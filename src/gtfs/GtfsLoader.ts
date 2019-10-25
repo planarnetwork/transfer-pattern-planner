@@ -54,7 +54,7 @@ class StatefulGtfsLoader {
       endTime: this.timeParser.getTime(row.end_time)
     };
 
-    pushNested(t, this.transfers, row.from_stop_id);
+    pushNested(t, this.transfers, row.from_stop_id, row.to_stop_id);
   }
 
   public calendar(row: any): void {

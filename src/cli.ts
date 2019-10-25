@@ -29,7 +29,10 @@ async function main() {
   const query = new DepartAfterQuery(planner, new JourneyFactory(), [new MultipleCriteriaFilter()]);
 
   console.time("query");
-  const results = await query.plan(["TBW"], ["NRW"], new Date(), 3600 * 4 + 1800);
+  const results = await query.plan(        [
+    "EUS", "MYB", "STP", "PAD", "BFR", "CTK", "CST", "CHX", "LBG",
+    "WAE", "VIC", "VXH", "WAT", "OLD", "MOG", "KGX", "LST", "FST"
+  ], ["BHM", "BMO", "BSW", "BHI"], new Date(), 3600 * 4 + 1800);
   console.timeEnd("query");
 
   db.end();
