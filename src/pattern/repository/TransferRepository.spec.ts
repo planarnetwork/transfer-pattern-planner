@@ -21,7 +21,7 @@ describe("TransferRepository", () => {
     const repository = new TransferRepository(transferIndex);
     const [leg] = repository.getTransfers("A", "C");
 
-    chai.expect(leg).to.be.undefined;
+    chai.expect(leg).to.equal(undefined);
   });
 
 });

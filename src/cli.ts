@@ -1,12 +1,15 @@
 import * as fs from "fs";
 import { GtfsLoader } from "./gtfs/GtfsLoader";
 import { TimeParser } from "./gtfs/TimeParser";
-import { ConnectionScanAlgorithm } from "./csa/ConnectionScanAlgorithm";
-import { ScanResultsFactory } from "./csa/ScanResultsFactory";
 import { JourneyFactory } from "./journey/JourneyFactory";
 import { DepartAfterQuery } from "./query/DepartAfterQuery";
 import { MultipleCriteriaFilter } from "./query/MultipleCriteriaFilter";
 import { Journey } from "./journey/Journey";
+import { TransferPatternPlanner } from "./pattern/TransferPatternPlanner";
+import { TransferPatternFactory } from "./pattern/TransferPatternFactory";
+import { TransferPatternRepository } from "./pattern/repository/TransferPatternRepository";
+import { TimetableLegRepository } from "./pattern/repository/TimetableLegRepository";
+import { TransferRepository } from "./pattern/repository/TransferRepository";
 
 async function main() {
   const loader = new GtfsLoader(new TimeParser());
@@ -15,13 +18,21 @@ async function main() {
   const gtfs = await loader.load(fs.createReadStream("/home/linus/Downloads/gb-rail-latest.zip"));
   console.timeEnd("initial load");
 
-  const csa = new ConnectionScanAlgorithm(gtfs.connections, gtfs.transfers, new ScanResultsFactory(gtfs.interchange));
-  const query = new DepartAfterQuery(csa, new JourneyFactory(), [new MultipleCriteriaFilter()]);
+  const db = await getDatabase();
+  const factory = new TransferPatternFactory(
+    new TransferPatternRepository(db),
+    new TimetableLegRepository(gtfs.trips),
+    new TransferRepository(gtfs.transfers),
+    gtfs.interchange
+  );
+  const planner = new TransferPatternPlanner(factory);
+  const query = new DepartAfterQuery(planner, new JourneyFactory(), [new MultipleCriteriaFilter()]);
 
   console.time("query");
-  const results = query.plan(["TBW"], ["NRW"], new Date(), 9 * 3600);
+  const results = await query.plan(["TBW"], ["NRW"], new Date(), 3600 * 4 + 1800);
   console.timeEnd("query");
 
+  db.end();
   results.forEach(result => console.log(journeyToString(result)));
 }
 
@@ -41,6 +52,16 @@ function toTime(time: number) {
   if (seconds < 10) { seconds = "0" + seconds; }
 
   return hours + ":" + minutes + ":" + seconds;
+}
+
+function getDatabase() {
+  return require("mysql2/promise").createPool({
+    host: "localhost",
+    user: "root",
+    database: "ojp",
+    dateStrings: true,
+    connectionLimit: 2
+  });
 }
 
 main().catch(e => console.error(e));

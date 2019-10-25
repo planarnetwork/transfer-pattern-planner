@@ -7,14 +7,14 @@ describe("isTransfer", () => {
     const transfer = { origin: "A", destination: "B", duration: 15, startTime: 0, endTime: 0 };
     const result = isTransfer(transfer);
 
-    chai.expect(result).to.be.true;
+    chai.expect(result).to.equal(true);
   });
 
   it("returns false when given a timetable leg", () => {
     const timetableLeg = { origin: "A", destination: "B", stopTimes: [], trip: {} as any };
     const result = isTransfer(timetableLeg);
 
-    chai.expect(result).to.be.false;
+    chai.expect(result).to.equal(false);
   });
 
 });

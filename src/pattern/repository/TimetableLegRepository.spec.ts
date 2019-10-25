@@ -7,7 +7,7 @@ import { TimetableLegRepository } from "./TimetableLegRepository";
 describe("TimetableLegRepository", () => {
 
   it("returns legs between a given origin and destination", () => {
-    const t = trip(
+    const t = createTrip(
       st("A", 1000),
       st("B", 1005),
       st("C", 1010),
@@ -25,14 +25,14 @@ describe("TimetableLegRepository", () => {
   });
 
   it("sorts results by arrival time", () => {
-    const t1 = trip(
+    const t1 = createTrip(
       st("A", 1010),
       st("B", 1015),
       st("C", 1020),
       st("D", 1025),
     );
 
-    const t2 = trip(
+    const t2 = createTrip(
       st("A", 1000),
       st("B", 1005),
       st("C", 1010),
@@ -53,7 +53,7 @@ describe("TimetableLegRepository", () => {
 
 });
 
-function trip(...stopTimes: StopTime[]): Trip {
+function createTrip(...stopTimes: StopTime[]): Trip {
   return {
     tripId: "1",
     serviceId: "1",

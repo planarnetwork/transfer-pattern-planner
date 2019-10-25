@@ -33,7 +33,11 @@ export class MultipleCriteriaFilter implements JourneyFilter {
    * Sort by departure time ascending and arrival time descending as a tie breaker
    */
   private sort(a: Journey, b: Journey): number {
-    return a.departureTime !== b.departureTime ? a.departureTime - b.departureTime : b.arrivalTime - a.arrivalTime;
+    return a.departureTime !== b.departureTime
+      ? a.departureTime - b.departureTime
+      : b.arrivalTime !== a.arrivalTime
+        ? b.arrivalTime - a.arrivalTime
+        : b.legs.length - a.legs.length;
   }
 
   /**

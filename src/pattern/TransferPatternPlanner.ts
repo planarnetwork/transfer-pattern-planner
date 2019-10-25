@@ -1,6 +1,7 @@
-import { AnyLeg, DayOfWeek, Journey, JourneyFactory, StopID, Time } from "../index";
 import { TransferPatternFactory } from "./TransferPatternFactory";
 import { TransferPattern } from "./TransferPattern";
+import { DateNumber, DayOfWeek, StopID, Time } from "../gtfs/Gtfs";
+import { AnyLeg } from "../journey/Journey";
 
 /**
  * Get a list of journeys departing
@@ -11,12 +12,16 @@ export class TransferPatternPlanner {
     private readonly transferPatternRepository: TransferPatternFactory,
   ) {}
 
-  public plan(originTimes: OriginDepartureTimes, destinations: StopID[], date: number, dow: DayOfWeek): JourneyLegs[] {
+  public async plan(
+    originTimes: OriginDepartureTimes,
+    destinations: StopID[],
+    date: DateNumber,
+    dow: DayOfWeek
+  ): Promise<JourneyLegs[]> {
     const origins = Object.keys(originTimes);
+    const patterns = await this.transferPatternRepository.getTransferPatterns(origins, destinations, date, dow);
 
-    return this.transferPatternRepository
-      .getTransferPatterns(origins, destinations, date, dow)
-      .flatMap(pattern => this.getJourneyLegsFromPattern(pattern, originTimes));
+    return patterns.flatMap(pattern => this.getJourneyLegsFromPattern(pattern, originTimes));
   }
 
   private getJourneyLegsFromPattern(pattern: TransferPattern, originTimes: OriginDepartureTimes): JourneyLegs[] {
@@ -27,6 +32,9 @@ export class TransferPatternPlanner {
 
 }
 
+/**
+ * Journey as represented by an array of legs
+ */
 export type JourneyLegs = AnyLeg[];
 
 /**

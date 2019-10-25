@@ -2,6 +2,9 @@ import { AnyLeg, isTransfer, TimetableLeg, Transfer } from "../journey/Journey";
 import { JourneyLegs } from "./TransferPatternPlanner";
 import { Duration, Time } from "../gtfs/Gtfs";
 
+/**
+ * One stop allow a transfer patterns path.
+ */
 export class TransferPatternNode {
 
   private timetableLegIndex: number = 0;
@@ -14,7 +17,14 @@ export class TransferPatternNode {
     private readonly interchange: Duration
   ) {}
 
-  public getJourneys(legs: AnyLeg[], departureTime: Time): JourneyLegs[] {
+  /**
+   * Using the existing legs find the next available leg that arrives at this node. Continue creating journeys for each
+   * child node until there are none left and the pattern is complete.
+   *
+   * If a leg cannot be found return an empty array, nullifying the journey so far.
+   */
+  public getJourneys(legs: AnyLeg[], previousArrivalTime: Time): JourneyLegs[] {
+    const departureTime = previousArrivalTime + this.interchange;
     const leg = this.findLeg(departureTime);
 
     if (!leg) {
@@ -29,7 +39,7 @@ export class TransferPatternNode {
       ? departureTime + leg.duration
       : leg.stopTimes[leg.stopTimes.length - 1].arrivalTime;
 
-    return this.children.flatMap(p => p.getJourneys([...legs, leg], arrivalTime + this.interchange));
+    return this.children.flatMap(p => p.getJourneys([...legs, leg], arrivalTime));
   }
 
   private findLeg(departureTime: Time): AnyLeg | null {

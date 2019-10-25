@@ -19,13 +19,12 @@ export class DepartAfterQuery {
   /**
    * Plan a journey between the origin and destination set of stops on the given date and time
    */
-  public plan(origins: StopID[], destinations: StopID[], date: Date, time: Time): Journey[] {
+  public async plan(origins: StopID[], destinations: StopID[], date: Date, time: Time): Promise<Journey[]> {
     const originTimes = origins.reduce(keyValue(origin => [origin, time]), {});
     const dateNumber = this.getDateNumber(date);
     const dayOfWeek = date.getDay() as DayOfWeek;
-    const journeys = this.planner
-      .plan(originTimes, destinations, dateNumber, dayOfWeek)
-      .map(legs => this.resultsFactory.getJourney(legs));
+    const journeyLegs = await this.planner.plan(originTimes, destinations, dateNumber, dayOfWeek);
+    const journeys = journeyLegs.map(legs => this.resultsFactory.getJourney(legs));
 
     // apply each filter to the results
     return this.filters.reduce((rs, filter) => filter.apply(rs), journeys);

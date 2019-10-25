@@ -15,12 +15,21 @@ export class JourneySeed {
   ) {}
 
   /**
-   * Try to create a journey for every timetable leg in this seed.
+   * If this node has no children then just return the timetable legs prepended with the transfers.
+   *
+   * Otherwise, pass every timetable leg with the transfers prepended to every child node to complete the journey.
    */
   public getJourneys(): JourneyLegs[] {
-    return this.timetableLegs.flatMap(l => this.node.getJourneys(
-      this.transfers,
-      l.stopTimes[0].departureTime,
+    return this.node.children.length === 0
+        ? this.timetableLegs.map(l => [...this.transfers, l])
+        : this.node.children.flatMap(n => this.getJourneysFromNode(n));
+  }
+
+  private getJourneysFromNode(node: TransferPatternNode): JourneyLegs[] {
+    return this.timetableLegs.flatMap(l => node.getJourneys(
+        [...this.transfers, l],
+        l.stopTimes[l.stopTimes.length - 1].arrivalTime
     ));
   }
+
 }

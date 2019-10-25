@@ -27,7 +27,9 @@ export class TimetableLegRepository {
     return this.index[origin][destination]
       .filter(trip => trip.service.runsOn(date, dow))
       .map(trip => this.tripToLeg(trip, origin, destination))
-      .sort((a, b) => a.stopTimes[a.stopTimes.length - 1].arrivalTime - b.stopTimes[b.stopTimes.length - 1].arrivalTime);
+      .sort(
+        (a, b) => a.stopTimes[a.stopTimes.length - 1].arrivalTime - b.stopTimes[b.stopTimes.length - 1].arrivalTime
+      );
   }
 
   private tripToLeg(trip: Trip, origin: StopID, destination: StopID): TimetableLeg {
