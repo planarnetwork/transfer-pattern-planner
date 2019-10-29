@@ -14,6 +14,7 @@
     "lint-raw": "tslint --project tsconfig.json",
     "lint": "npm run lint-raw -- -t stylish",
     "coverage": "nyc --reporter=text npm test",
+    "report-coverage": "npm run coverage && nyc report --reporter=text-lcov > coverage.lcov && codecov",
     "start": "NODE_OPTIONS=$NODE_DEBUG_OPTION ts-node src/cli.ts",
     "perf": "NODE_OPTIONS=$NODE_DEBUG_OPTION ts-node src/performance.ts",
     "generate-barrels": "barrelsby --delete -d src/ -e .spec.ts -e cli.ts"
@@ -33,6 +34,7 @@
     "@types/node": "^12.11.5",
     "barrelsby": "^2.2.0",
     "chai": "^4.2.0",
+    "codecov": "^3.6.1",
     "mocha": "^6.2.2",
     "nyc": "^14.1.1",
     "ts-node": "^8.4.1",

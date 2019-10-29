@@ -1,7 +1,8 @@
 language: node_js
 node_js:
-  - 11
+  - 12
 
 install: npm install
-script: npm test
-
+scripts:
+  - npm test
+  - npm run report-coverage
