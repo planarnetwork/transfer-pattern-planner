@@ -4,7 +4,7 @@ import { DateNumber, DayOfWeek, StopID, Time } from "../gtfs/Gtfs";
 import { AnyLeg } from "../journey/Journey";
 
 /**
- * Get a list of journeys departing
+ * Use the transfer pattern factory to create a number of transfer patterns that return journeys
  */
 export class TransferPatternPlanner {
 
@@ -21,13 +21,7 @@ export class TransferPatternPlanner {
     const origins = Object.keys(originTimes);
     const patterns = await this.transferPatternRepository.getTransferPatterns(origins, destinations, date, dow);
 
-    return patterns.flatMap(pattern => this.getJourneyLegsFromPattern(pattern, originTimes));
-  }
-
-  private getJourneyLegsFromPattern(pattern: TransferPattern, originTimes: OriginDepartureTimes): JourneyLegs[] {
-    return pattern
-      .getJourneySeeds(originTimes)
-      .flatMap(seed => seed.getJourneys());
+    return patterns.flatMap(pattern => pattern.getJourneys(originTimes));
   }
 
 }
