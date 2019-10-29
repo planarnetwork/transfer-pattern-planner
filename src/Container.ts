@@ -40,9 +40,10 @@ export class Container {
   @memoize
   public getDatabase() {
     return require("mysql2/promise").createPool({
-      host: "localhost",
-      user: "root",
-      database: "ojp",
+      host: process.env.DATABASE_HOST || "localhost",
+      user: process.env.DATABASE_USER || "root",
+      database: process.env.DATABASE_NAME || "ojp",
+      password: process.env.DATABASE_PASS || undefined,
       dateStrings: true,
       connectionLimit: 2
     });

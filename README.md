@@ -3,44 +3,67 @@ Transfer Pattern Journey Planner
 =========================
 [![Travis](https://img.shields.io/travis/planarnetwork/transfer-pattern-planner.svg?style=flat-square)](https://travis-ci.org/planarnetwork/transfer-pattern-planner) ![npm](https://img.shields.io/npm/v/transfer-pattern-planner.svg?style=flat-square) ![David](https://img.shields.io/david/planarnetwork/transfer-pattern-planner.svg?style=flat-square)
 
+Implementation of Hannah Bast's [transfer pattern journey planner](https://ad.informatik.uni-freiburg.de/files/transferpatterns.pdf). This repository does not generate transfer patterns, they need to be created in a pre-processing step.
 
-
- - Calendars are checked to ensure services are running on the specified day
- - The origin and destination may be a set of stops
+In addition to the algorithm described in the paper this implementation:
+ - Checks calendars to ensure services are running on the specified day
+ - Origins and destinations may be a set of stops
  - Interchange time at each station is applied
  - Pickup / set down marker of stop times are obeyed
- - Multi-criteria journey filtering
+ - Overtaken trains are removed
  - Transfers (footpaths) can be used
  
 ## Usage
 
 It will work with any well formed GTFS data set.
  
-Node +11 is required for all examples.
+Node +12 is required for all examples.
 
 ```
 npm install --save transfer-pattern-planner
 ``` 
+
+### Transfer Patterns
+
+The algorithm expects transfer patterns to be stored in a MySQL compatible table:
+
+```
+CREATE TABLE `transfer_patterns` (
+  `journey` char(6) NOT NULL,
+  `pattern` varchar(255) NOT NULL,
+  PRIMARY KEY (`journey`,`pattern`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+```
+
+Where the journey is the origin and destination concatenated and the pattern are comma separated stops, excluding the origin and destination.
+
+### Environment
+
+The following environment variables can set the database location: 
+
+```
+DATABASE_HOST=localhost
+DATABASE_USER=root
+DATABASE_NAME=jp
+DATABASE_PASS=
+```
 
 ### Depart After Query
 
 Find the first results that depart after a specific time
 
 ```javascript
-const {GtfsLoader, JourneyFactory, ConnectionScanAlgorithm, ScanResultsFactory, TimeParser, MultipleCriteriaFilter, DepartAfterQuery} = require("transfer-pattern-planner");
+const { Container } = require("transfer-pattern-planner");
 
-const gtfsLoader = new GtfsLoader(new TimeParser());
-const gtfs = await gtfsLoader.load(fs.createReadStream("gtfs.zip"));
-const csa = new ConnectionScanAlgorithm(gtfs.connections, gtfs.transfers, new ScanResultsFactory(gtfs.interchange));
-const query = new DepartAfterQuery(csa, new JourneyFactory(), [new MultipleCriteriaFilter()]);
-const results = query.plan(["TBW"], ["NRW"], new Date(), 9 * 3600);
+const container = new Container();
+const query = await container.getQuery();
+const results = await query.plan(
+    ["BHM", "BMO", "BSW", "BHI"],
+    ["NRW"],
+    new Date(),
+    3600 * 10 // time of day in seconds
+);
 ```
-
-## TODO
-
-- Short circuit connection scan once all destinations found
-- Fake trip ID for transfers to (removes branch)
-- Only scan transfers for stops once (avoid re-scan when time is improved)
 
 ## Contributing
 
@@ -58,20 +81,3 @@ If you would like to send a pull request please write your contribution in TypeS
 
 This software is licensed under [GNU GPLv3](https://www.gnu.org/licenses/gpl-3.0.en.html).
 
-# Notes
-
-// Too much flat map?? Might be faster with mutable list
-
-Remove patterns where a group station that is not the origin is included in the pattern
-Remove patterns where a group station that is not the destination is included in the pattern
-
-For every origin
-  Merge patterns into a tree
-  
-Start dumb
- - List of lists
-    - Get seed legs 
-    - Optimise leg search by storing current index
- - Then go to a tree
- - Optimise by removing unnecessary group patterns
- 
