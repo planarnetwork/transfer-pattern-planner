@@ -29,11 +29,40 @@ describe("TransferPattern", () => {
     );
 
     const pattern = new TransferPattern("A", [child1], interchange);
-    const [seed] = pattern.getJourneySeeds({ "A": 10 });
+    const journeys = pattern.getJourneys({ "A": 10 });
 
-    chai.expect(seed.getJourneys()).to.deep.equal([
+    chai.expect(journeys).to.deep.equal([
       [tr("A", "B", 10), tr("B", "C", 10), tt("C", "D", 1130, 1200)]
     ]);
   });
 
+  it("will call child nodes to complete journeys", () => {
+    const child3 = new TransferPatternNode(
+      [tt("C", "D", 1130, 1200)],
+      [],
+      [],
+      0
+    );
+
+    const child2 = new TransferPatternNode(
+      [tt("B", "C", 1100, 1115)],
+      [],
+      [child3],
+      0
+    );
+
+    const child1 = new TransferPatternNode(
+      [],
+      [tr("A", "B", 10)],
+      [child2],
+      0
+    );
+
+    const pattern = new TransferPattern("A", [child1], interchange);
+    const journeys = pattern.getJourneys({ "A": 10 });
+
+    chai.expect(journeys).to.deep.equal([
+      [tr("A", "B", 10), tt("B", "C", 1100, 1115), tt("C", "D", 1130, 1200)]
+    ]);
+  });
 });

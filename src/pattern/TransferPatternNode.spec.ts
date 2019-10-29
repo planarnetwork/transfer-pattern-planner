@@ -1,5 +1,4 @@
 import * as chai from "chai";
-import { JourneySeed } from "./JourneySeed";
 import { tr, tt } from "../journey/JourneyFactory.spec";
 import { TransferPatternNode } from "./TransferPatternNode";
 
@@ -24,12 +23,10 @@ describe("TransferPatternNode", () => {
   });
 
   it("applies interchange time", () => {
-    const node = new TransferPatternNode([timetable2, timetable3], [], [], 1);
+    const child = new TransferPatternNode([timetable2, timetable3], [], [], 1);
+    const node = new TransferPatternNode([timetable1], [], [child], 1);
 
-    const [journey1] = node.getJourneys(
-      [timetable1],
-      timetable1.stopTimes[timetable1.stopTimes.length - 1].arrivalTime
-    );
+    const [journey1] = node.getJourneys([], 0);
 
     chai.expect(journey1[0]).to.deep.equal(timetable1);
     chai.expect(journey1[1]).to.deep.equal(timetable3);

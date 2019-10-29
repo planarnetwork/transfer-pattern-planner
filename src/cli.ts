@@ -7,10 +7,13 @@ async function main() {
 
   console.time("query");
   const results = await query.plan(
-    ["BHM"],
-    ["EUS"],
+    ["BHM", "BMO", "BSW", "BHI"],
+    [
+      "EUS", "MYB", "STP", "PAD", "BFR", "CTK", "CST", "CHX", "LBG",
+      "WAE", "VIC", "VXH", "WAT", "OLD", "MOG", "KGX", "LST", "FST"
+    ],
     new Date(),
-    3600 * 20 + 1000
+    3600 * 4 + 1800
   );
   console.timeEnd("query");
 

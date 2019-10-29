@@ -1,5 +1,4 @@
 import { TransferPatternNode } from "./TransferPatternNode";
-import { JourneySeed } from "./JourneySeed";
 import { JourneyLegs, OriginDepartureTimes } from "./TransferPatternPlanner";
 import { StopID, Time } from "../gtfs/Gtfs";
 import { TimetableLeg, Transfer } from "../journey/Journey";
