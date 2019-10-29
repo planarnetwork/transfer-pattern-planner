@@ -1,7 +1,7 @@
 
 Transfer Pattern Journey Planner
 =========================
-[![Travis](https://img.shields.io/travis/planarnetwork/transfer-pattern-planner.svg?style=flat-square)](https://travis-ci.org/planarnetwork/transfer-pattern-planner) ![npm](https://img.shields.io/npm/v/transfer-pattern-planner.svg?style=flat-square) ![David](https://img.shields.io/david/planarnetwork/transfer-pattern-planner.svg?style=flat-square)
+[![Travis](https://img.shields.io/travis/planarnetwork/transfer-pattern-planner.svg?style=flat-square)](https://travis-ci.org/planarnetwork/transfer-pattern-planner) ![npm](https://img.shields.io/npm/v/transfer-pattern-planner.svg?style=flat-square) [![codecov](https://codecov.io/gh/planarnetwork/transfer-pattern-planner/branch/master/graph/badge.svg)](https://codecov.io/gh/planarnetwork/transfer-pattern-planner) ![David](https://img.shields.io/david/planarnetwork/transfer-pattern-planner.svg?style=flat-square)
 
 Implementation of Hannah Bast's [transfer pattern journey planner](https://ad.informatik.uni-freiburg.de/files/transferpatterns.pdf). This repository does not generate transfer patterns, they need to be created in a pre-processing step.
 
