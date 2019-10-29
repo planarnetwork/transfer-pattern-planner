@@ -1,30 +1,48 @@
 import { StopID } from "../../gtfs/Gtfs";
+import { product } from "ts-array-utils";
 
+/**
+ * Access to transfer patterns as stored in the database
+ */
 export class TransferPatternRepository {
 
   constructor(
     private readonly db: any
   ) {}
 
-  // todo accept a group of origins and destinations
-  // make sure to add direct pattern between every origin and destination
-  public async getPatterns(origin: StopID, destination: StopID): Promise<string[][]> {
-    const isReversed = origin > destination;
+  /**
+   * Return all the transfer patterns between the given origins and destinations
+   */
+  public async getPatterns(origins: StopID[], destinations: StopID[]): Promise<Record<string, string[][]>> {
+    // construct an index that makes the ordered origin + destination back to the original origin + destination
+    const journeys: Record<string, string> = product(origins, destinations)
+      .reduce((index, [origin, destination]) => {
+        const journeyOrdered = origin > destination ? destination + origin : origin + destination;
+        index[journeyOrdered] = origin + destination;
+
+        return index;
+      }, {});
+
     const [rows]: [PatternRow[]] = await this.db.query(
-      "SELECT pattern FROM transfer_patterns WHERE journey = ? ORDER BY LENGTH(pattern), pattern",
-      [isReversed ? destination + origin : origin + destination]
+      "SELECT * FROM transfer_patterns WHERE journey IN (?) ORDER BY LENGTH(pattern)",
+      [Object.keys(journeys)]
     );
 
-    const results: string[][] = [[]];
+    const results = {};
 
     for (const row of rows) {
-      results.push(isReversed ? row.pattern.split(",").reverse() : row.pattern.split(","));
+      const pattern = row.journey !== journeys[row.journey] ? row.pattern.split(",").reverse() : row.pattern.split(",");
+
+      results[journeys[row.journey]] = results[journeys[row.journey]] || [[]];
+      results[journeys[row.journey]].push(pattern);
     }
 
     return results;
   }
+
 }
 
 interface PatternRow {
-  pattern: string
+  pattern: string,
+  journey: string
 }

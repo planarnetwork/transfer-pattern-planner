@@ -27,22 +27,23 @@ export class TransferPatternFactory {
     date: DateNumber,
     dow: DayOfWeek
   ): Promise<TransferPattern[]> {
-    return Promise.all(
-      origins.map(o => this.getTransferPatternForOrigin(o, origins, destinations, date, dow))
-    );
+    const patterns = await this.patternRepository.getPatterns(origins, destinations);
+
+    return origins.map(o => this.getTransferPatternForOrigin(patterns, o, origins, destinations, date, dow));
   }
 
-  private async getTransferPatternForOrigin(
+  private getTransferPatternForOrigin(
+    patterns: Record<string, string[][]>,
     origin: StopID,
     origins: StopID[],
     destinations: StopID[],
     date: DateNumber,
     dow: DayOfWeek
-  ): Promise<TransferPattern> {
+  ): TransferPattern {
     const tree = { stop: origin, children: {} } as TransferPatternTreeNode;
 
     for (const destination of destinations) {
-      for (const patternStops of await this.patternRepository.getPatterns(origin, destination)) {
+      for (const patternStops of patterns[origin + destination]) {
         if (this.doesNotContainGroupStops(patternStops, origins, destinations)) {
           patternStops.push(destination);
 

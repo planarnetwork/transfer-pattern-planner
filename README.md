@@ -39,13 +39,14 @@ Where the journey is the origin and destination concatenated and the pattern are
 
 ### Environment
 
-The following environment variables can set the database location: 
+The following environment variables can set the database credentials and gtfs file location: 
 
 ```
 DATABASE_HOST=localhost
 DATABASE_USER=root
 DATABASE_NAME=jp
 DATABASE_PASS=
+GTFS=/path/to/gtfs.zip
 ```
 
 ### Depart After Query
@@ -63,6 +64,8 @@ const results = await query.plan(
     new Date(),
     3600 * 10 // time of day in seconds
 );
+
+await container.end(); // database connection must be closed
 ```
 
 ## Contributing
