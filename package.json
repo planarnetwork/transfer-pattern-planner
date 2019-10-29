@@ -15,8 +15,8 @@
     "lint": "npm run lint-raw -- -t stylish",
     "coverage": "nyc --reporter=text npm test",
     "report-coverage": "npm run coverage && nyc report --reporter=text-lcov > coverage.lcov && codecov",
-    "start": "NODE_OPTIONS=$NODE_DEBUG_OPTION ts-node src/cli.ts",
-    "perf": "NODE_OPTIONS=$NODE_DEBUG_OPTION ts-node src/performance.ts",
+    "start": "NODE_OPTIONS='--max-old-space-size=8000' ts-node src/cli.ts",
+    "perf": "NODE_OPTIONS='--max-old-space-size=8000' ts-node src/performance.ts",
     "generate-barrels": "barrelsby --delete -d src/ -e .spec.ts -e cli.ts"
   },
   "keywords": [
