@@ -6,6 +6,9 @@ import { Interchange } from "../gtfs/GtfsLoader";
 import { TransferPatternNode } from "./TransferPatternNode";
 import { TransferPatternRepository } from "./repository/TransferPatternRepository";
 
+/**
+ * Creates transfer patterns
+ */
 export class TransferPatternFactory {
 
   constructor(
@@ -15,7 +18,10 @@ export class TransferPatternFactory {
     private readonly interchange: Interchange
   ) {}
 
-  public getTransferPatterns(
+  /**
+   * Create a transfer pattern for every origin. Each transfer pattern may arrive at a different destination.
+   */
+  public async getTransferPatterns(
     origins: StopID[],
     destinations: StopID[],
     date: DateNumber,
@@ -47,24 +53,31 @@ export class TransferPatternFactory {
       }
     }
 
-    return new TransferPattern(origin, this.getPatternNodes(tree.children, date, dow), this.interchange);
+    return new TransferPattern(
+      origin,
+      Object.values(tree.children).map(n => this.getPatternNode(n, date, dow)),
+      this.interchange
+    );
   }
 
   private doesNotContainGroupStops(pattern: StopID[], origins: StopID[], destinations: StopID[]): boolean {
     return origins.every(s => !pattern.includes(s)) && destinations.every(s => !pattern.includes(s));
   }
 
-  private getPatternNodes(
-    children: Record<StopID, TransferPatternTreeNode>,
+  private getPatternNode(
+    node: TransferPatternTreeNode,
     date: DateNumber,
     dow: DayOfWeek
-  ): TransferPatternNode[] {
-    return Object.values(children).map(node => new TransferPatternNode(
-      this.timetableLegRepository.getLegs(node.parent.stop, node.stop, date, dow),
-      this.transferRepository.getTransfers(node.parent.stop, node.stop),
-      Object.values(node.children).length > 0 ? this.getPatternNodes(node.children, date, dow) : [],
+  ): TransferPatternNode {
+    const timetableLegs = this.timetableLegRepository.getLegs(node.parent.stop, node.stop, date, dow);
+    const transfers = this.transferRepository.getTransfers(node.parent.stop, node.stop);
+
+    return new TransferPatternNode(
+      timetableLegs,
+      transfers,
+      Object.values(node.children).map(n => this.getPatternNode(n, date, dow)),
       this.interchange[node.stop]
-    ));
+    );
   }
 
 }

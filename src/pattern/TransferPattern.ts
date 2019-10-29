@@ -24,6 +24,7 @@ export class TransferPattern {
   }
 
   private getJourneySeedsFromNode(node: TransferPatternNode, time: Time, transfers: Transfer[]): JourneySeed[] {
+    // todo perf test: is this filter needed
     const timetableLegs = node.timetableLegs.filter(l => l.stopTimes[0].departureTime >= time);
 
     if (timetableLegs.length > 0) {

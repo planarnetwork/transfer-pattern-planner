@@ -89,8 +89,8 @@ class StatefulGtfsLoader {
       stop: row.stop_id,
       departureTime: this.timeParser.getTime(row.departure_time),
       arrivalTime: this.timeParser.getTime(row.arrival_time),
-      pickUp: row.pickup_type === "0",
-      dropOff: row.drop_off_type === "0"
+      pickUp: row.pickup_type !== "1",
+      dropOff: row.drop_off_type !== "1"
     };
 
     pushNested(stopTime, this.stopTimes, row.trip_id);

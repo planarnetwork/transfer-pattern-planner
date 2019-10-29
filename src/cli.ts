@@ -1,42 +1,25 @@
-import * as fs from "fs";
-import { GtfsLoader } from "./gtfs/GtfsLoader";
-import { TimeParser } from "./gtfs/TimeParser";
-import { JourneyFactory } from "./journey/JourneyFactory";
-import { DepartAfterQuery } from "./query/DepartAfterQuery";
-import { MultipleCriteriaFilter } from "./query/MultipleCriteriaFilter";
 import { Journey } from "./journey/Journey";
-import { TransferPatternPlanner } from "./pattern/TransferPatternPlanner";
-import { TransferPatternFactory } from "./pattern/TransferPatternFactory";
-import { TransferPatternRepository } from "./pattern/repository/TransferPatternRepository";
-import { TimetableLegRepository } from "./pattern/repository/TimetableLegRepository";
-import { TransferRepository } from "./pattern/repository/TransferRepository";
+import { Container } from "./Container";
 
 async function main() {
-  const loader = new GtfsLoader(new TimeParser());
-
-  console.time("initial load");
-  const gtfs = await loader.load(fs.createReadStream("/home/linus/Downloads/gb-rail-latest.zip"));
-  console.timeEnd("initial load");
-
-  const db = await getDatabase();
-  const factory = new TransferPatternFactory(
-    new TransferPatternRepository(db),
-    new TimetableLegRepository(gtfs.trips),
-    new TransferRepository(gtfs.transfers),
-    gtfs.interchange
-  );
-  const planner = new TransferPatternPlanner(factory);
-  const query = new DepartAfterQuery(planner, new JourneyFactory(), [new MultipleCriteriaFilter()]);
+  const container = new Container();
+  const query = await container.getQuery();
 
   console.time("query");
-  const results = await query.plan(        [
-    "EUS", "MYB", "STP", "PAD", "BFR", "CTK", "CST", "CHX", "LBG",
-    "WAE", "VIC", "VXH", "WAT", "OLD", "MOG", "KGX", "LST", "FST"
-  ], ["BHM", "BMO", "BSW", "BHI"], new Date(), 3600 * 4 + 1800);
+  const results = await query.plan(
+    ["BHM", "BMO", "BSW", "BHI"],
+    [
+      "EUS", "MYB", "STP", "PAD", "BFR", "CTK", "CST", "CHX", "LBG",
+      "WAE", "VIC", "VXH", "WAT", "OLD", "MOG", "KGX", "LST", "FST"
+    ],
+    new Date(),
+    3600 * 20 + 1000
+  );
   console.timeEnd("query");
 
-  db.end();
   results.forEach(result => console.log(journeyToString(result)));
+
+  await container.end();
 }
 
 function journeyToString(j: Journey) {
@@ -55,16 +38,6 @@ function toTime(time: number) {
   if (seconds < 10) { seconds = "0" + seconds; }
 
   return hours + ":" + minutes + ":" + seconds;
-}
-
-function getDatabase() {
-  return require("mysql2/promise").createPool({
-    host: "localhost",
-    user: "root",
-    database: "ojp",
-    dateStrings: true,
-    connectionLimit: 2
-  });
 }
 
 main().catch(e => console.error(e));

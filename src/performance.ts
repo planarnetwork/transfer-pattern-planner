@@ -1,11 +1,4 @@
-import * as fs from "fs";
-import { GtfsLoader } from "./gtfs/GtfsLoader";
-import { TimeParser } from "./gtfs/TimeParser";
-import { ConnectionScanAlgorithm } from "./csa/ConnectionScanAlgorithm";
-import { ScanResultsFactory } from "./csa/ScanResultsFactory";
-import { DepartAfterQuery } from "./query/DepartAfterQuery";
-import { JourneyFactory } from "./journey/JourneyFactory";
-import { MultipleCriteriaFilter } from "./query/MultipleCriteriaFilter";
+import { Container } from "./Container";
 
 const queries = [
     [["MRF", "LVC", "LVJ", "LIV"], ["NRW"]],
@@ -65,13 +58,8 @@ const queries = [
 ];
 
 async function run() {
-    const loader = new GtfsLoader(new TimeParser());
-    console.time("initial load");
-    const gtfs = await loader.load(fs.createReadStream("/home/linus/Downloads/gb-rail-latest.zip"));
-    console.timeEnd("initial load");
-
-    const csa = new ConnectionScanAlgorithm(gtfs.connections, gtfs.transfers, new ScanResultsFactory(gtfs.interchange));
-    const query = new DepartAfterQuery(csa, new JourneyFactory());
+    const container = new Container();
+    const query = await container.getQuery();
 
     console.time("planning");
     const date = new Date();
@@ -82,7 +70,7 @@ async function run() {
             const key = origins.join() + ":" + destinations.join();
 
             console.time(key);
-            const results = query.plan(origins, destinations, date, 36000);
+            const results = await query.plan(origins, destinations, date, 36000);
             console.timeEnd(key);
 
             if (results.length === 0) {
@@ -96,6 +84,8 @@ async function run() {
     console.timeEnd("planning");
     console.log("Num journeys: " + numResults);
     console.log(`Memory usage: ${Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100} MB`);
+
+    await container.end();
 }
 
 run().catch(e => console.error(e));
