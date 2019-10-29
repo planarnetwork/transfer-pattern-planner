@@ -23,8 +23,7 @@ export class TransferPatternNode {
    *
    * If a leg cannot be found return an empty array, nullifying the journey so far.
    */
-  public getJourneys(legs: AnyLeg[], previousArrivalTime: Time): JourneyLegs[] {
-    const departureTime = previousArrivalTime + this.interchange;
+  public getJourneys(legs: AnyLeg[], departureTime: Time): JourneyLegs[] {
     const leg = this.findLeg(departureTime);
 
     if (!leg) {
@@ -36,8 +35,8 @@ export class TransferPatternNode {
     }
 
     const arrivalTime = isTransfer(leg)
-      ? departureTime + leg.duration
-      : leg.stopTimes[leg.stopTimes.length - 1].arrivalTime;
+      ? departureTime + leg.duration + this.interchange
+      : leg.stopTimes[leg.stopTimes.length - 1].arrivalTime + this.interchange;
 
     return this.children.flatMap(p => p.getJourneys([...legs, leg], arrivalTime));
   }

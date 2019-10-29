@@ -28,7 +28,7 @@ export class TransferPattern {
     const timetableLegs = node.timetableLegs.filter(l => l.stopTimes[0].departureTime >= time);
 
     if (timetableLegs.length > 0) {
-      return [new JourneySeed(node, transfers, timetableLegs)];
+      return [new JourneySeed(node, transfers, timetableLegs, this.interchange[timetableLegs[0].destination])];
     }
 
     const transfer = node.findTransfer(time);

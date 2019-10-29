@@ -1,6 +1,7 @@
 import { TransferPatternNode } from "./TransferPatternNode";
 import { JourneyLegs } from "./TransferPatternPlanner";
 import { TimetableLeg, Transfer } from "../journey/Journey";
+import { Duration } from "../gtfs/Gtfs";
 
 /**
  * A JourneySeed is the beginning of a series of timetable results. It contains the initial legs required to get to the
@@ -11,7 +12,8 @@ export class JourneySeed {
   constructor(
     private readonly node: TransferPatternNode,
     private readonly transfers: Transfer[],
-    private readonly timetableLegs: TimetableLeg[]
+    private readonly timetableLegs: TimetableLeg[],
+    private readonly interchange: Duration
   ) {}
 
   /**
@@ -28,7 +30,7 @@ export class JourneySeed {
   private getJourneysFromNode(node: TransferPatternNode): JourneyLegs[] {
     return this.timetableLegs.flatMap(l => node.getJourneys(
         [...this.transfers, l],
-        l.stopTimes[l.stopTimes.length - 1].arrivalTime
+        l.stopTimes[l.stopTimes.length - 1].arrivalTime + this.interchange
     ));
   }
 

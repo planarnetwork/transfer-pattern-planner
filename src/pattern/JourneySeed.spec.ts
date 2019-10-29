@@ -12,7 +12,7 @@ describe("JourneySeed", () => {
     const timetable2 = tt("C", "D", 1010, 1025);
     const node = new TransferPatternNode([timetable1, timetable2], [], [], 0);
 
-    const seed = new JourneySeed(node, [transfer1, transfer2], [timetable1, timetable2]);
+    const seed = new JourneySeed(node, [transfer1, transfer2], [timetable1, timetable2], 0);
     const [legs1, legs2] = seed.getJourneys();
 
     chai.expect(legs1[0]).to.deep.equal(transfer1);
@@ -30,10 +30,10 @@ describe("JourneySeed", () => {
     const timetable2 = tt("C", "D", 1010, 1025);
     const timetable3 = tt("D", "E", 1030, 1040);
     const timetable4 = tt("D", "E", 1035, 1045);
-    const childNode = new TransferPatternNode([timetable3, timetable4], [], [], 10);
-    const node = new TransferPatternNode([timetable1, timetable2], [], [childNode], 0);
+    const childNode = new TransferPatternNode([timetable3, timetable4], [], [], 0);
+    const node = new TransferPatternNode([timetable1, timetable2], [], [childNode], 10);
 
-    const seed = new JourneySeed(node, [transfer1, transfer2], [timetable1, timetable2]);
+    const seed = new JourneySeed(node, [transfer1, transfer2], [timetable1, timetable2], 0);
     const [journey1, journey2] = seed.getJourneys();
 
     chai.expect(journey1[0]).to.deep.equal(transfer1);
