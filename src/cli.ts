@@ -3,7 +3,7 @@ import { Container } from "./Container";
 
 async function main() {
   const container = new Container();
-  const query = await container.getQuery();
+  const query = await container.getDijkstraQuery();
 
   console.time("query");
   const results = await query.plan(

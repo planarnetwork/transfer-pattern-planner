@@ -10,6 +10,9 @@ import { TransferPatternPlanner } from "./pattern/TransferPatternPlanner";
 import { JourneyFactory } from "./journey/JourneyFactory";
 import { MultipleCriteriaFilter } from "./query/MultipleCriteriaFilter";
 import * as memoize from "memoized-class-decorator";
+import { DijkstraQuery } from "./dijkstra/DijkstraQuery";
+import { GraphFactory } from "./dijkstra/GraphFactory";
+import { DijkstraAlgorithm } from "./dijkstra/DijkstraAlgorithm";
 
 /**
  * Dependency container
@@ -35,6 +38,27 @@ export class Container {
     console.log(`Memory usage: ${Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100} MB`);
 
     return new DepartAfterQuery(planner, new JourneyFactory(), [new MultipleCriteriaFilter()]);
+  }
+
+  public async getDijkstraQuery(): Promise<DijkstraQuery> {
+    const loader = new GtfsLoader(new TimeParser());
+
+    console.time("initial load");
+    const gtfs = await loader.load(fs.createReadStream(process.env.GTFS!));
+    console.timeEnd("initial load");
+
+    const db = await this.getDatabase();
+    const factory = new GraphFactory(
+      new TransferPatternRepository(db),
+      new TimetableLegRepository(gtfs.trips),
+      new TransferRepository(gtfs.transfers),
+      gtfs.interchange
+    );
+    const planner = new DijkstraAlgorithm(gtfs.interchange);
+
+    console.log(`Memory usage: ${Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100} MB`);
+
+    return new DijkstraQuery(factory, planner, new JourneyFactory(), [new MultipleCriteriaFilter()]);
   }
 
   @memoize
