@@ -1,6 +1,6 @@
 {
   "name": "transfer-pattern-planner",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Transfer Pattern Planning Algorithm",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -16,7 +16,7 @@
     "coverage": "nyc --reporter=text npm test",
     "report-coverage": "npm run coverage && nyc report --reporter=text-lcov > coverage.lcov && codecov",
     "start": "NODE_OPTIONS=$NODE_DEBUG_OPTION ts-node src/cli.ts",
-    "perf": "NODE_OPTIONS=$NODE_DEBUG_OPTION ts-node src/performance.ts",
+    "perf": "NODE_OPTIONS=--max-old-space-size=4000 ts-node src/performance.ts",
     "generate-barrels": "barrelsby --delete -d src/ -e .spec.ts -e cli.ts"
   },
   "keywords": [
@@ -28,24 +28,24 @@
   "author": "Linus Norton <linusnorton@gmail.com>",
   "license": "GPL-3.0",
   "devDependencies": {
-    "@types/chai": "^4.2.4",
+    "@types/chai": "^4.2.11",
     "@types/mocha": "^5.2.7",
-    "@types/mysql": "^2.15.7",
-    "@types/node": "^12.11.7",
+    "@types/mysql": "^2.15.13",
+    "@types/node": "^12.12.42",
     "barrelsby": "^2.2.0",
     "chai": "^4.2.0",
-    "codecov": "^3.6.1",
-    "mocha": "^6.2.2",
+    "codecov": "^3.7.0",
+    "mocha": "^6.2.3",
     "nyc": "^14.1.1",
-    "ts-node": "^8.4.1",
-    "tslint": "^5.20.0",
-    "typescript": "^3.6.4"
+    "ts-node": "^8.10.1",
+    "tslint": "^5.20.1",
+    "typescript": "^3.9.3"
   },
   "dependencies": {
-    "gtfs-stream": "^2.0.9",
-    "ts-array-utils": "^0.5.0",
+    "gtfs-stream": "^2.1.0",
     "memoized-class-decorator": "^1.5.0",
-    "mysql2": "^1.7.0"
+    "mysql2": "^1.7.0",
+    "ts-array-utils": "^0.5.0"
   },
   "nyc": {
     "extends": "@istanbul/nyc-config-typescript",

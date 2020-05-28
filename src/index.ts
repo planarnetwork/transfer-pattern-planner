@@ -14,6 +14,8 @@ export * from "./pattern/TransferPattern";
 export * from "./pattern/TransferPatternFactory";
 export * from "./pattern/TransferPatternNode";
 export * from "./pattern/TransferPatternPlanner";
+export * from "./pattern/repository/DatabaseTransferPatternRepository";
+export * from "./pattern/repository/InMemoryTransferPatternRepository";
 export * from "./pattern/repository/TimetableLegRepository";
 export * from "./pattern/repository/TransferPatternRepository";
 export * from "./pattern/repository/TransferRepository";

@@ -4,6 +4,7 @@ import { TimetableLegRepository } from "./repository/TimetableLegRepository";
 import { TransferRepository } from "./repository/TransferRepository";
 import { Interchange } from "../gtfs/GtfsLoader";
 import { TransferPatternNode } from "./TransferPatternNode";
+import { DatabaseTransferPatternRepository } from "./repository/DatabaseTransferPatternRepository";
 import { TransferPatternRepository } from "./repository/TransferPatternRepository";
 
 /**
