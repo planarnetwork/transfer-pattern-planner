@@ -1,15 +1,30 @@
 {
   "name": "transfer-pattern-planner",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "Transfer Pattern Planning Algorithm",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
-  "types": "./dist/esm/index.d.ts",
+  "types": "./dist/cjs/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/esm/index.d.ts",
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js"
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    },
+    "./node": {
+      "import": {
+        "types": "./dist/esm/Container.d.ts",
+        "default": "./dist/esm/Container.js"
+      },
+      "require": {
+        "types": "./dist/cjs/Container.d.ts",
+        "default": "./dist/cjs/Container.js"
+      }
     },
     "./package.json": "./package.json"
   },
@@ -54,7 +69,6 @@
     "vitest": "^5.0.0"
   },
   "dependencies": {
-    "@gb-transit/gtfs-loader": "^1.1.0",
-    "mysql2": "^3.24.3"
+    "@gb-transit/gtfs-loader": "^1.1.0"
   }
 }

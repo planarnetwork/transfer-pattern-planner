@@ -42,13 +42,12 @@ export class TransferPatternFactory {
     const tree = { stop: origin, children: {} } as TransferPatternTreeNode;
 
     for (const destination of destinations) {
-      for (const patternStops of patterns[origin + destination]) {
+      // a pair with no pattern between them is not an error, there is just no journey to plan
+      for (const patternStops of patterns[origin + destination] ?? []) {
         if (this.doesNotContainGroupStops(patternStops, origins, destinations)) {
-          patternStops.push(destination);
-
           let treeNode = tree;
 
-          for (const stop of patternStops) {
+          for (const stop of [...patternStops, destination]) {
             treeNode.children[stop] ??= { stop, parent: treeNode, children: {} };
             treeNode = treeNode.children[stop];
           }

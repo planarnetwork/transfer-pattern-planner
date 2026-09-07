@@ -28,8 +28,13 @@ npm install --save transfer-pattern-planner
 The package ships both CommonJS and ES modules, so `require` and `import` both work. The examples
 below use `require`; the equivalent `import` is the same names from the same place.
 
+Everything the package root exports runs in a browser as readily as in node: the feed and the
+patterns are both read from whatever the environment can give bytes from, and decompressed with
+`DecompressionStream`, which each of them has. The one exception is `Container`, which reads paths
+off the file system and so lives at `transfer-pattern-planner/node`.
+
 Reading the feed is [`@gb-transit/gtfs-loader`](https://www.npmjs.com/package/@gb-transit/gtfs-loader)'s
-job. `mysql2` is used to read the transfer patterns.
+job, and it is the only dependency.
 
 ### Stations and platforms
 
@@ -50,32 +55,37 @@ days the other does not.
 
 ### Transfer Patterns
 
-The algorithm expects transfer patterns to be stored in a MySQL compatible table:
+The patterns come from a file, which [raptor](https://github.com/planarnetwork/raptor) writes:
 
 ```
-CREATE TABLE `transfer_patterns` (
-  `journey` char(6) NOT NULL,
-  `pattern` varchar(255) NOT NULL,
-  PRIMARY KEY (`journey`,`pattern`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1
+npm --prefix /path/to/raptor run patterns gtfs.zip 2026-09-15 transfer-patterns.br
 ```
 
-Where the journey is the origin and destination station concatenated and the pattern are comma
-separated stations, excluding the origin and destination. The `char(6)` key assumes stations are
-named by a three character code, as they are in a feed whose `stop_code` is a CRS code.
+Each line is one pattern: the stations it calls at, three characters each, with nothing between
+them. The two ends are written in alphabetical order, so a pattern appears once for both directions
+of travel and a journey from Norwich is found under `LST`, read the other way. Sorting puts patterns
+that begin the same way together, so a line only records how many leading stations it takes from the
+line above and what follows it:
 
-`docker-compose up` starts a database to hold them.
+```
+0LSTNRW
+2CBGNRW           <- LST, then CBG NRW
+3ELYNRW           <- LST CBG, then ELY NRW
+```
+
+The file is brotli compressed. A national feed comes to about 33MB for 34 million patterns, which
+`loadTransferPatterns` reads into an index of the stations between each pair of ends.
+
+Because a station is three characters, this needs a feed whose `stop_code` is one - a CRS code, for
+the GB rail feeds this is built for.
 
 ### Environment
 
-The following environment variables can set the database credentials and gtfs file location:
+The following environment variables set where the feed and the patterns are read from:
 
 ```
-DATABASE_HOST=localhost
-DATABASE_USER=root
-DATABASE_NAME=ojp
-DATABASE_PASS=
 GTFS=/path/to/gtfs.zip
+TRANSFER_PATTERNS=/path/to/transfer-patterns.br
 ```
 
 ### Depart After Query
@@ -83,7 +93,7 @@ GTFS=/path/to/gtfs.zip
 Find the first results that depart after a specific time
 
 ```javascript
-const { Container } = require("transfer-pattern-planner");
+const { Container } = require("transfer-pattern-planner/node");
 
 const container = new Container();
 const query = await container.getQuery();
@@ -93,30 +103,24 @@ const results = await query.plan(
     new Date(),
     3600 * 10 // time of day in seconds
 );
-
-await container.end(); // database connection must be closed
 ```
-
-`container.getInMemoryQuery()` does the same but reads every pattern into memory first, which
-answers queries faster at the cost of the memory to hold them.
 
 ### Wiring it up yourself
 
 The container is a convenience. The pieces can be assembled directly, which is what you want if the
-patterns come from somewhere other than the database:
+patterns come from somewhere other than a file - `InMemoryTransferPatternRepository` takes an index
+directly, and anything implementing `TransferPatternRepository` will do:
 
 ```javascript
 const fs = require("fs");
 const {
-  loadGtfs, JourneyFactory, DepartAfterQuery, MultipleCriteriaFilter, TimetableLegRepository,
-  TransferRepository, TransferPatternFactory, TransferPatternPlanner, InMemoryTransferPatternRepository
+  loadGtfs, loadTransferPatterns, JourneyFactory, DepartAfterQuery, MultipleCriteriaFilter,
+  TimetableLegRepository, TransferRepository, TransferPatternFactory, TransferPatternPlanner
 } = require("transfer-pattern-planner");
 
 const gtfs = await loadGtfs(fs.createReadStream("gtfs.zip"));
 // or toGtfsData(feed) if you already have a feed from @gb-transit/gtfs-loader
-
-// direct, and one changing at CBG
-const patterns = new InMemoryTransferPatternRepository({ LST: { NRW: ["", "CBG"] } });
+const patterns = await loadTransferPatterns("transfer-patterns.br");
 
 const factory = new TransferPatternFactory(
   patterns,
@@ -132,6 +136,36 @@ const query = new DepartAfterQuery(
 
 const journeys = await query.plan(["NRW"], ["LST"], new Date(), 9 * 60 * 60);
 ```
+
+### In the browser
+
+Nothing here needs a file system. Fetch the feed and the patterns at the same time and the two
+downloads overlap, each parsed as it arrives rather than after it has all been collected:
+
+```javascript
+import { loadGTFSFromUrl } from "@gb-transit/gtfs-loader";
+import { loadTransferPatternsFromUrl, toGtfsData, createQuery } from "transfer-pattern-planner";
+
+const [gtfs, patterns] = await Promise.all([
+  loadGTFSFromUrl("/gtfs.zip").then(toGtfsData),
+  loadTransferPatternsFromUrl("/transfer-patterns.br")
+]);
+
+const query = createQuery(gtfs, patterns);
+const journeys = await query.plan(["NRW"], ["LST"], new Date(), 9 * 60 * 60);
+```
+
+Both files have to be readable by the page, which means the host either serves them from the same
+origin or sends an `Access-Control-Allow-Origin` header.
+
+The pattern file is decompressed with `DecompressionStream("brotli")`. A host that would rather send
+it with `Content-Encoding: br` can, and the browser will have decoded the body before this sees it -
+that is noticed from the header rather than decompressing what is already plain. Pass
+`{ compressed: false }` to say so for a file that arrives decompressed some other way.
+
+`createQuery` is the whole of the wiring between having a feed and its patterns and being able to
+plan, so `loadTransferPatterns` takes the same sources the feed loader does - a `Response`, a
+`ReadableStream`, a `Blob`, the bytes, or a node stream.
 
 ## Contributing
 

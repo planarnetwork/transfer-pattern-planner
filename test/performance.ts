@@ -84,8 +84,6 @@ async function run() {
     console.timeEnd("planning");
     console.log(`Num journeys: ${numResults}`);
     console.log(`Memory usage: ${Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100} MB`);
-
-    await container.end();
 }
 
 run().catch(e => console.error(e));

@@ -1,5 +1,5 @@
 import type { StopID } from "@gb-transit/gtfs-loader";
-import type { Pool } from "mysql2";
+import { CODE_WIDTH } from "./PatternFormat.js";
 import type { TransferPatternIndex, TransferPatternRepository } from "./TransferPatternRepository.js";
 
 /**
@@ -8,7 +8,7 @@ import type { TransferPatternIndex, TransferPatternRepository } from "./Transfer
 export class InMemoryTransferPatternRepository implements TransferPatternRepository {
 
   constructor(
-    private readonly patterns: Record<StopID, Record<StopID, string[]>>
+    private readonly patterns: PackedPatternIndex
   ) { }
 
   /**
@@ -19,11 +19,13 @@ export class InMemoryTransferPatternRepository implements TransferPatternReposit
 
     for (const origin of origins) {
       for (const destination of destinations) {
+        // a pattern is held once, under its two ends in alphabetical order, so a journey the other
+        // way round is the same pattern read backwards
         const reversed = origin > destination;
-        const patterns = reversed ? this.patterns[destination]?.[origin] : this.patterns[origin]?.[destination];
+        const packed = this.patterns.get(reversed ? destination + origin : origin + destination);
 
-        if (patterns) {
-          const stops = patterns.map(p => p === "" ? [] : reversed ? p.split(",").reverse() : p.split(","));
+        if (packed) {
+          const stops = packed.map(pattern => unpack(pattern, reversed));
 
           stops.sort((a, b) => a.length - b.length);
           result[origin + destination] = stops;
@@ -36,37 +38,23 @@ export class InMemoryTransferPatternRepository implements TransferPatternReposit
 }
 
 /**
- * Factory that will create the in-memory transfer pattern index by loading them from a database
+ * The patterns between two stations, keyed by those stations in alphabetical order.
+ *
+ * Each pattern is the stations between the two ends, packed into a single string of fixed width
+ * codes rather than an array. A national feed holds tens of millions of patterns, and an array per
+ * pattern costs more to keep than the stations in it do.
  */
-export class InMemoryTransferPatternRepositoryFactory {
+export type PackedPatternIndex = Map<string, string[]>;
 
-  constructor(
-    private readonly db: Pool
-  ) {}
+/**
+ * The stations of a packed pattern, in the direction they are being travelled in.
+ */
+function unpack(pattern: string, reversed: boolean): StopID[] {
+  const stops: StopID[] = [];
 
-  public create(): Promise<InMemoryTransferPatternRepository> {
-    return new Promise((resolve, reject) => {
-      const stream = this.db.query("SELECT * FROM transfer_patterns");
-      const index: Record<StopID, Record<StopID, string[]>> = {};
-
-      stream.on("result", (row: PatternRow) => {
-        const origin = row.journey.slice(0, 3);
-        const destination = row.journey.slice(3, 6);
-        const [a, b] = origin > destination ? [destination, origin] : [origin, destination];
-
-        index[a] ??= {};
-        index[a][b] ??= [];
-        index[a][b].push(row.pattern);
-      });
-
-      stream.on("error", reject);
-      stream.on("end", () => resolve(new InMemoryTransferPatternRepository(index)));
-    });
+  for (let at = 0; at < pattern.length; at += CODE_WIDTH) {
+    stops.push(pattern.slice(at, at + CODE_WIDTH));
   }
 
-}
-
-interface PatternRow {
-  pattern: string,
-  journey: string
+  return reversed ? stops.reverse() : stops;
 }

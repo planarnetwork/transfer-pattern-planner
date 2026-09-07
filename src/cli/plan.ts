@@ -20,8 +20,6 @@ async function main() {
   for (const result of results) {
     console.log(journeyToString(result));
   }
-
-  await container.end();
 }
 
 function journeyToString(j: Journey) {
