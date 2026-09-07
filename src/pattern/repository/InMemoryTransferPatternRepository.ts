@@ -1,6 +1,6 @@
-import { StopID } from "../../gtfs/Gtfs";
-import { product, pushNested } from "ts-array-utils";
-import { TransferPatternRepository } from "./TransferPatternRepository";
+import type { StopID } from "@gb-transit/gtfs-loader";
+import type { Pool } from "mysql2";
+import type { TransferPatternIndex, TransferPatternRepository } from "./TransferPatternRepository.js";
 
 /**
  * Loads transfer patterns from an in memory index
@@ -8,24 +8,26 @@ import { TransferPatternRepository } from "./TransferPatternRepository";
 export class InMemoryTransferPatternRepository implements TransferPatternRepository {
 
   constructor(
-    private readonly patterns: Record<string, Record<string, string[]>>
+    private readonly patterns: Record<StopID, Record<StopID, string[]>>
   ) { }
 
   /**
    * Load the patterns and return them sorted by size in ascending order
    */
-  public async getPatterns(origins: StopID[], destinations: StopID[]): Promise<Record<string, string[][]>> {
-    const result = {};
+  public async getPatterns(origins: StopID[], destinations: StopID[]): Promise<TransferPatternIndex> {
+    const result: TransferPatternIndex = {};
 
-    for (const [origin, destination] of product(origins, destinations)) {
-      const patterns = origin > destination ? this.patterns[destination][origin] : this.patterns[origin][destination];
+    for (const origin of origins) {
+      for (const destination of destinations) {
+        const reversed = origin > destination;
+        const patterns = reversed ? this.patterns[destination]?.[origin] : this.patterns[origin]?.[destination];
 
-      if (patterns) {
-        result[origin + destination] = origin > destination
-          ? patterns.map(p => p === "" ? [] : p.split(",").reverse())
-          : patterns.map(p => p === "" ? [] : p.split(","));
+        if (patterns) {
+          const stops = patterns.map(p => p === "" ? [] : reversed ? p.split(",").reverse() : p.split(","));
 
-        result[origin + destination].sort((a, b) => a.length - b.length);
+          stops.sort((a, b) => a.length - b.length);
+          result[origin + destination] = stops;
+        }
       }
     }
 
@@ -39,24 +41,32 @@ export class InMemoryTransferPatternRepository implements TransferPatternReposit
 export class InMemoryTransferPatternRepositoryFactory {
 
   constructor(
-    private readonly db: any
+    private readonly db: Pool
   ) {}
 
-  public async create(): Promise<InMemoryTransferPatternRepository> {
-    return new Promise(resolve => {
+  public create(): Promise<InMemoryTransferPatternRepository> {
+    return new Promise((resolve, reject) => {
       const stream = this.db.query("SELECT * FROM transfer_patterns");
-      const index = {};
+      const index: Record<StopID, Record<StopID, string[]>> = {};
 
-      stream.on("result", row => {
-        const origin = row.journey.substr(0, 3);
-        const destination = row.journey.substr(3, 3);
-        const [a , b] = origin > destination ? [destination, origin] : [origin, destination];
+      stream.on("result", (row: PatternRow) => {
+        const origin = row.journey.slice(0, 3);
+        const destination = row.journey.slice(3, 6);
+        const [a, b] = origin > destination ? [destination, origin] : [origin, destination];
 
-        pushNested(row.pattern, index, a, b);
+        index[a] ??= {};
+        index[a][b] ??= [];
+        index[a][b].push(row.pattern);
       });
 
+      stream.on("error", reject);
       stream.on("end", () => resolve(new InMemoryTransferPatternRepository(index)));
     });
   }
 
+}
+
+interface PatternRow {
+  pattern: string,
+  journey: string
 }

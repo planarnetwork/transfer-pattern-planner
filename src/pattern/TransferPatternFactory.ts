@@ -1,11 +1,9 @@
-import { DateNumber, DayOfWeek, StopID } from "../gtfs/Gtfs";
-import { TransferPattern } from "./TransferPattern";
-import { TimetableLegRepository } from "./repository/TimetableLegRepository";
-import { TransferRepository } from "./repository/TransferRepository";
-import { Interchange } from "../gtfs/GtfsLoader";
-import { TransferPatternNode } from "./TransferPatternNode";
-import { DatabaseTransferPatternRepository } from "./repository/DatabaseTransferPatternRepository";
-import { TransferPatternRepository } from "./repository/TransferPatternRepository";
+import type { DateNumber, DayOfWeek, Interchange, StopID } from "@gb-transit/gtfs-loader";
+import type { TimetableLegRepository } from "./repository/TimetableLegRepository.js";
+import type { TransferPatternRepository } from "./repository/TransferPatternRepository.js";
+import type { TransferRepository } from "./repository/TransferRepository.js";
+import { TransferPattern } from "./TransferPattern.js";
+import { TransferPatternNode } from "./TransferPatternNode.js";
 
 /**
  * Creates transfer patterns
@@ -48,9 +46,12 @@ export class TransferPatternFactory {
         if (this.doesNotContainGroupStops(patternStops, origins, destinations)) {
           patternStops.push(destination);
 
-          patternStops.reduce((treeNode: TransferPatternTreeNode, stop: StopID) => {
-            return treeNode.children[stop] = treeNode.children[stop] || { stop, parent: treeNode, children: {} };
-          }, tree);
+          let treeNode = tree;
+
+          for (const stop of patternStops) {
+            treeNode.children[stop] ??= { stop, parent: treeNode, children: {} };
+            treeNode = treeNode.children[stop];
+          }
         }
       }
     }

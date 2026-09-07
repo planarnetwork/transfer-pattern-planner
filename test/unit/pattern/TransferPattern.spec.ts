@@ -1,10 +1,10 @@
-import * as chai from "chai";
-import { TransferPattern } from "./TransferPattern";
-import { TransferPatternNode } from "./TransferPatternNode";
-import { tr, tt } from "../journey/JourneyFactory.spec";
+import { describe, expect, it } from "vitest";
+import { TransferPattern } from "../../../src/pattern/TransferPattern.js";
+import { TransferPatternNode } from "../../../src/pattern/TransferPatternNode.js";
+import { tr, tt } from "../util.js";
 
 describe("TransferPattern", () => {
-  const interchange = { "A": 5, "B": 10, "C": 15 };
+  const interchange = { A: 5, B: 10, C: 15 };
 
   it("will return the journey seeds with transfers until it finds timetable legs", () => {
     const child3 = new TransferPatternNode(
@@ -29,9 +29,9 @@ describe("TransferPattern", () => {
     );
 
     const pattern = new TransferPattern("A", [child1], interchange);
-    const journeys = pattern.getJourneys({ "A": 10 });
+    const journeys = pattern.getJourneys({ A: 10 });
 
-    chai.expect(journeys).to.deep.equal([
+    expect(journeys).toEqual([
       [tr("A", "B", 10), tr("B", "C", 10), tt("C", "D", 1130, 1200)]
     ]);
   });
@@ -59,9 +59,9 @@ describe("TransferPattern", () => {
     );
 
     const pattern = new TransferPattern("A", [child1], interchange);
-    const journeys = pattern.getJourneys({ "A": 10 });
+    const journeys = pattern.getJourneys({ A: 10 });
 
-    chai.expect(journeys).to.deep.equal([
+    expect(journeys).toEqual([
       [tr("A", "B", 10), tt("B", "C", 1100, 1115), tt("C", "D", 1130, 1200)]
     ]);
   });

@@ -1,4 +1,4 @@
-import { StopID } from "../../gtfs/Gtfs";
+import type { StopID } from "@gb-transit/gtfs-loader";
 
 export interface TransferPatternRepository {
   getPatterns(origins: StopID[], destinations: StopID[]): Promise<TransferPatternIndex>;

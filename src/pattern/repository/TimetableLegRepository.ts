@@ -1,49 +1,79 @@
-import { TripIndex } from "../../gtfs/GtfsLoader";
-import { DateNumber, DayOfWeek, StopID, StopTime, Trip } from "../../gtfs/Gtfs";
-import { TimetableLeg } from "../../journey/Journey";
-import * as memoize from "memoized-class-decorator";
+import type { DateNumber, DayOfWeek, StopID, StopTime } from "@gb-transit/gtfs-loader";
+import type { TripCalls, TripIndex } from "../../gtfs/GtfsLoader.js";
+import type { TimetableLeg } from "../../journey/Journey.js";
 
 /**
- * Provides access to the timetable legs by storing an index of every trip that runs between every origin and
- * destination
+ * Provides access to the timetable legs by storing an index of every trip that runs between every
+ * origin and destination station
  */
 export class TimetableLegRepository {
+
+  /**
+   * Legs already extracted, keyed by the arguments they were asked for. A pattern tree asks for the
+   * same origin, destination and date many times over, and pulling the calls out of a trip is not
+   * free.
+   */
+  private readonly legs = new Map<string, TimetableLeg[]>();
 
   constructor(
     private readonly index: TripIndex
   ) {}
 
   /**
-   * Extract legs for every trip that runs between the origin and destination on the given date.
+   * Extract legs for every trip that runs between the origin and destination station on the given
+   * date.
    *
    * Results are ordered by arrival time.
    */
-  @memoize
   public getLegs(origin: StopID, destination: StopID, date: DateNumber, dow: DayOfWeek): TimetableLeg[] {
-    if (!this.index[origin] || !this.index[origin][destination]) {
+    const key = `${origin}|${destination}|${date}|${dow}`;
+    const cached = this.legs.get(key);
+
+    if (cached) {
+      return cached;
+    }
+
+    const legs = this.findLegs(origin, destination, date, dow);
+
+    this.legs.set(key, legs);
+
+    return legs;
+  }
+
+  private findLegs(origin: StopID, destination: StopID, date: DateNumber, dow: DayOfWeek): TimetableLeg[] {
+    const trips = this.index[origin]?.[destination];
+
+    if (!trips) {
       return [];
     }
 
-    return this.index[origin][destination]
-      .filter(trip => trip.service.runsOn(date, dow))
+    return trips
+      .filter(trip => trip.trip.service.runsOn(date, dow))
       .map(trip => this.tripToLeg(trip, origin, destination))
       .sort(
         (a, b) => a.stopTimes[a.stopTimes.length - 1].arrivalTime - b.stopTimes[b.stopTimes.length - 1].arrivalTime
       );
   }
 
-  private tripToLeg(trip: Trip, origin: StopID, destination: StopID): TimetableLeg {
-    const stopTimes = this.getStopTimes(trip, origin, destination);
-
-    return { origin, destination, stopTimes, trip };
+  private tripToLeg(trip: TripCalls, origin: StopID, destination: StopID): TimetableLeg {
+    return {
+      origin,
+      destination,
+      stopTimes: this.getStopTimes(trip, origin, destination),
+      trip: trip.trip
+    };
   }
 
-  private getStopTimes(trip: Trip, origin: StopID, destination: StopID): StopTime[] {
-    const i = trip.stopTimes.findIndex(c => c.stop === origin);
+  /**
+   * The calls between the two stations. The stop times are the feed's own, so a leg between two
+   * stations still says which platform it uses at each end.
+   */
+  private getStopTimes(trip: TripCalls, origin: StopID, destination: StopID): StopTime[] {
+    const i = trip.stations.indexOf(origin);
 
-    for (let j = i + 1; j < trip.stopTimes.length; j++) {
-      if (trip.stopTimes[j].stop === destination) {
-        return trip.stopTimes.slice(i, j + 1);
+    for (let j = i + 1; j < trip.stations.length; j++) {
+      if (trip.stations[j] === destination) {
+        return trip.calls.slice(i, j + 1);
       }
     }
 

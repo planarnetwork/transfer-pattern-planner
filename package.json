@@ -2,22 +2,37 @@
   "name": "transfer-pattern-planner",
   "version": "1.1.0",
   "description": "Transfer Pattern Planning Algorithm",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/planarnetwork/transfer-pattern-planner.git"
   },
   "scripts": {
-    "test": "npm run lint && mocha --require ts-node/register **/*.spec.ts",
-    "prepublishOnly": "npm run generate-barrels && rm -rf ./dist/ && tsc -p ./ --outDir dist/",
-    "lint-raw": "tslint --project tsconfig.json",
-    "lint": "npm run lint-raw -- -t stylish",
-    "coverage": "nyc --reporter=text npm test",
-    "report-coverage": "npm run coverage && nyc report --reporter=text-lcov > coverage.lcov && codecov",
-    "start": "NODE_OPTIONS=$NODE_DEBUG_OPTION ts-node src/cli.ts",
-    "perf": "NODE_OPTIONS=--max-old-space-size=4000 ts-node src/performance.ts",
-    "generate-barrels": "barrelsby --delete -d src/ -e .spec.ts -e cli.ts"
+    "test": "npm run lint && npm run typecheck && vitest run",
+    "watch-test": "vitest",
+    "lint": "biome lint src/ test/",
+    "typecheck": "tsc --noEmit -p ./",
+    "build": "rm -rf ./dist/ && tsc -p tsconfig.cjs.json && tsc -p tsconfig.esm.json && cp cjs-package.json dist/cjs/package.json && cp esm-package.json dist/esm/package.json",
+    "prepublishOnly": "npm run build",
+    "start": "tsx src/cli/plan.ts",
+    "perf": "NODE_OPTIONS=--max-old-space-size=4000 tsx test/performance.ts"
   },
   "keywords": [
     "Journey",
@@ -27,38 +42,19 @@
   ],
   "author": "Linus Norton <linusnorton@gmail.com>",
   "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/planarnetwork/transfer-pattern-planner/issues"
+  },
+  "homepage": "https://github.com/planarnetwork/transfer-pattern-planner#readme",
   "devDependencies": {
-    "@types/chai": "^4.2.11",
-    "@types/mocha": "^5.2.7",
-    "@types/mysql": "^2.15.13",
-    "@types/node": "^12.12.42",
-    "barrelsby": "^2.2.0",
-    "chai": "^4.2.0",
-    "codecov": "^3.7.0",
-    "mocha": "^10.2.0",
-    "nyc": "^14.1.1",
-    "ts-node": "^8.10.1",
-    "tslint": "^5.20.1",
-    "typescript": "^3.9.3"
+    "@biomejs/biome": "2.5.12",
+    "@types/node": "26.5.0",
+    "tsx": "^4.23.13",
+    "typescript": "7.0.2",
+    "vitest": "^5.0.0"
   },
   "dependencies": {
-    "gtfs-stream": "^2.1.0",
-    "memoized-class-decorator": "^1.5.0",
-    "mysql2": "^1.7.0",
-    "ts-array-utils": "^0.5.0"
-  },
-  "nyc": {
-    "extends": "@istanbul/nyc-config-typescript",
-    "all": true,
-    "check-coverage": true,
-    "extension": [
-      ".ts"
-    ],
-    "include": [
-      "src/**/*.ts"
-    ],
-    "exclude": [
-      "src/*.ts"
-    ]
+    "@gb-transit/gtfs-loader": "^1.1.0",
+    "mysql2": "^3.24.3"
   }
 }

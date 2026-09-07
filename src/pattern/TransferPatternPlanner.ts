@@ -1,7 +1,6 @@
-import { TransferPatternFactory } from "./TransferPatternFactory";
-import { TransferPattern } from "./TransferPattern";
-import { DateNumber, DayOfWeek, StopID, Time } from "../gtfs/Gtfs";
-import { AnyLeg } from "../journey/Journey";
+import type { DateNumber, DayOfWeek, StopID, Time } from "@gb-transit/gtfs-loader";
+import type { AnyLeg } from "../journey/Journey.js";
+import type { TransferPatternFactory } from "./TransferPatternFactory.js";
 
 /**
  * Use the transfer pattern factory to create a number of transfer patterns that return journeys

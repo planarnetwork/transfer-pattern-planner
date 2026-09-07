@@ -1,8 +1,7 @@
-import { TransferPatternNode } from "./TransferPatternNode";
-import { JourneyLegs, OriginDepartureTimes } from "./TransferPatternPlanner";
-import { StopID, Time } from "../gtfs/Gtfs";
-import { TimetableLeg, Transfer } from "../journey/Journey";
-import { Interchange } from "../gtfs/GtfsLoader";
+import type { Interchange, StopID, Time } from "@gb-transit/gtfs-loader";
+import type { TimetableLeg, Transfer } from "../journey/Journey.js";
+import type { TransferPatternNode } from "./TransferPatternNode.js";
+import type { JourneyLegs, OriginDepartureTimes } from "./TransferPatternPlanner.js";
 
 /**
  * The root of a series of TransferPatternNodes. Represents an abstract path between to stops.

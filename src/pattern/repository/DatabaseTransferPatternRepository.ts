@@ -1,6 +1,6 @@
-import { StopID } from "../../gtfs/Gtfs";
-import { product, pushNested } from "ts-array-utils";
-import { TransferPatternRepository, TransferPatternIndex } from "./TransferPatternRepository";
+import type { StopID } from "@gb-transit/gtfs-loader";
+import type { Pool, RowDataPacket } from "mysql2/promise";
+import type { TransferPatternIndex, TransferPatternRepository } from "./TransferPatternRepository.js";
 
 /**
  * Access to transfer patterns as stored in the database
@@ -8,38 +8,41 @@ import { TransferPatternRepository, TransferPatternIndex } from "./TransferPatte
 export class DatabaseTransferPatternRepository implements TransferPatternRepository {
 
   constructor(
-    private readonly db: any
+    private readonly db: Pool
   ) {}
 
   /**
    * Return all the transfer patterns between the given origins and destinations
    */
   public async getPatterns(origins: StopID[], destinations: StopID[]): Promise<TransferPatternIndex> {
-    // construct an index that makes the ordered origin + destination back to the original origin + destination
-    const journeys: Record<string, string> = product(origins, destinations)
-      .reduce((index, [origin, destination]) => {
+    // construct an index that maps the ordered origin + destination back to the original origin + destination
+    const journeys: Record<string, string> = {};
+
+    for (const origin of origins) {
+      for (const destination of destinations) {
         const journeyOrdered = origin > destination ? destination + origin : origin + destination;
-        index[journeyOrdered] = origin + destination;
 
-        return index;
-      }, {});
+        journeys[journeyOrdered] = origin + destination;
+      }
+    }
 
-    const [rows]: [PatternRow[]] = await this.db.query(
+    const [rows] = await this.db.query<PatternRow[]>(
       "SELECT * FROM transfer_patterns WHERE journey IN (?) ORDER BY LENGTH(pattern)",
       [Object.keys(journeys)]
     );
 
-    const results = {};
+    const results: TransferPatternIndex = {};
 
     for (const row of rows) {
-      if (row.pattern === "") {
-        pushNested([], results, journeys[row.journey]);
-      }
-      else {
-        const stops = row.journey !== journeys[row.journey] ? row.pattern.split(",").reverse() : row.pattern.split(",");
+      const journey = journeys[row.journey];
+      // patterns are stored with the two ends in alphabetical order, so one read the other way round
+      // is the same pattern travelled in the opposite direction
+      const stops = row.pattern === "" ? []
+        : row.journey === journey ? row.pattern.split(",")
+        : row.pattern.split(",").reverse();
 
-        pushNested(stops, results, journeys[row.journey]);
-      }
+      results[journey] ??= [];
+      results[journey].push(stops);
     }
 
     return results;
@@ -47,7 +50,7 @@ export class DatabaseTransferPatternRepository implements TransferPatternReposit
 
 }
 
-interface PatternRow {
+interface PatternRow extends RowDataPacket {
   pattern: string,
   journey: string
 }

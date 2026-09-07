@@ -1,6 +1,6 @@
-import { AnyLeg, isTransfer, TimetableLeg, Transfer } from "../journey/Journey";
-import { JourneyLegs } from "./TransferPatternPlanner";
-import { Duration, Time } from "../gtfs/Gtfs";
+import type { Duration, Time } from "@gb-transit/gtfs-loader";
+import { type AnyLeg, isTransfer, type TimetableLeg, type Transfer } from "../journey/Journey.js";
+import type { JourneyLegs } from "./TransferPatternPlanner.js";
 
 /**
  * One stop allow a transfer patterns path.

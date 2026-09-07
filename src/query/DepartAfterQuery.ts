@@ -1,9 +1,8 @@
-import { keyValue } from "ts-array-utils";
-import { JourneyFactory } from "../journey/JourneyFactory";
-import { DayOfWeek, StopID, Time } from "../gtfs/Gtfs";
-import { Journey } from "../journey/Journey";
-import { JourneyFilter } from "./JourneyFilter";
-import { TransferPatternPlanner } from "../pattern/TransferPatternPlanner";
+import type { DayOfWeek, StopID, Time } from "@gb-transit/gtfs-loader";
+import type { Journey } from "../journey/Journey.js";
+import type { JourneyFactory } from "../journey/JourneyFactory.js";
+import type { OriginDepartureTimes, TransferPatternPlanner } from "../pattern/TransferPatternPlanner.js";
+import type { JourneyFilter } from "./JourneyFilter.js";
 
 /**
  * Search for journeys between a set of origin and destinations departing after a given time.
@@ -20,7 +19,12 @@ export class DepartAfterQuery {
    * Plan a journey between the origin and destination set of stops on the given date and time
    */
   public async plan(origins: StopID[], destinations: StopID[], date: Date, time: Time): Promise<Journey[]> {
-    const originTimes = origins.reduce(keyValue(origin => [origin, time]), {});
+    const originTimes: OriginDepartureTimes = {};
+
+    for (const origin of origins) {
+      originTimes[origin] = time;
+    }
+
     const dateNumber = this.getDateNumber(date);
     const dayOfWeek = date.getDay() as DayOfWeek;
     const journeyLegs = await this.planner.plan(originTimes, destinations, dateNumber, dayOfWeek);

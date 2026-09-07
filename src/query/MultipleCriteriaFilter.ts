@@ -1,15 +1,15 @@
-import { JourneyFilter } from "./JourneyFilter";
-import { Journey } from "../journey/Journey";
+import type { Journey } from "../journey/Journey.js";
+import type { JourneyFilter } from "./JourneyFilter.js";
 
 /**
  * Returns true if b arrives before or at the same time as a
  */
-export const earliestArrival = (a, b) => b.arrivalTime <= a.arrivalTime;
+export const earliestArrival: FilterCriteria = (a, b) => b.arrivalTime <= a.arrivalTime;
 
 /**
  * Returns true if b has the same or fewer changes than a
  */
-export const leastChanges = (a, b) => b.legs.length <= a.legs.length;
+export const leastChanges: FilterCriteria = (a, b) => b.legs.length <= a.legs.length;
 
 /**
  * Filters journeys based on a number of configurable criteria

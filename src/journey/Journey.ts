@@ -1,4 +1,4 @@
-import { Duration, StopID, StopTime, Time, Trip } from "../gtfs/Gtfs";
+import type { Duration, StopID, StopTime, Time, Trip } from "@gb-transit/gtfs-loader";
 
 /**
  * A leg
@@ -45,5 +45,5 @@ export interface Transfer extends Leg {
  * TypeScript guard to determine whether a leg is a Transfer
  */
 export function isTransfer(leg: AnyLeg): leg is Transfer {
-  return leg.hasOwnProperty("duration");
+  return "duration" in leg;
 }

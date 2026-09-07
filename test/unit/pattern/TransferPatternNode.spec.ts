@@ -1,6 +1,6 @@
-import * as chai from "chai";
-import { tr, tt } from "../journey/JourneyFactory.spec";
-import { TransferPatternNode } from "./TransferPatternNode";
+import { describe, expect, it } from "vitest";
+import { TransferPatternNode } from "../../../src/pattern/TransferPatternNode.js";
+import { tr, tt } from "../util.js";
 
 describe("TransferPatternNode", () => {
   const timetable1 = tt("A", "B", 1000, 1015);
@@ -18,8 +18,8 @@ describe("TransferPatternNode", () => {
       timetable1.stopTimes[timetable1.stopTimes.length - 1].arrivalTime
     );
 
-    chai.expect(journey1[0]).to.deep.equal(timetable1);
-    chai.expect(journey1[1]).to.deep.equal(timetable2);
+    expect(journey1[0]).toEqual(timetable1);
+    expect(journey1[1]).toEqual(timetable2);
   });
 
   it("applies interchange time", () => {
@@ -28,8 +28,8 @@ describe("TransferPatternNode", () => {
 
     const [journey1] = node.getJourneys([], 0);
 
-    chai.expect(journey1[0]).to.deep.equal(timetable1);
-    chai.expect(journey1[1]).to.deep.equal(timetable3);
+    expect(journey1[0]).toEqual(timetable1);
+    expect(journey1[1]).toEqual(timetable3);
   });
 
   it("finds a transfer", () => {
@@ -40,8 +40,8 @@ describe("TransferPatternNode", () => {
       timetable1.stopTimes[timetable1.stopTimes.length - 1].arrivalTime
     );
 
-    chai.expect(journey1[0]).to.deep.equal(timetable1);
-    chai.expect(journey1[1]).to.deep.equal(transfer1);
+    expect(journey1[0]).toEqual(timetable1);
+    expect(journey1[1]).toEqual(transfer1);
   });
 
   it("asks child nodes to complete the journey", () => {
@@ -53,9 +53,9 @@ describe("TransferPatternNode", () => {
       timetable1.stopTimes[timetable1.stopTimes.length - 1].arrivalTime
     );
 
-    chai.expect(journey1[0]).to.deep.equal(timetable1);
-    chai.expect(journey1[1]).to.deep.equal(timetable2);
-    chai.expect(journey1[2]).to.deep.equal(timetable4);
+    expect(journey1[0]).toEqual(timetable1);
+    expect(journey1[1]).toEqual(timetable2);
+    expect(journey1[2]).toEqual(timetable4);
   });
 
 });

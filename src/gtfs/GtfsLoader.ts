@@ -1,173 +1,116 @@
-import * as gtfs from "gtfs-stream";
-import { pushNested, setNested } from "ts-array-utils";
-import { Readable } from "stream";
-import { TimeParser } from "./TimeParser";
-import { Service } from "./Service";
-import { CalendarIndex, StopID, StopIndex, Time, Trip } from "./Gtfs";
-import { Transfer } from "../journey/Journey";
+import {
+  type GTFSFeed, type GTFSSource, type Interchange, loadGTFS, normalise, type StopID, type StopIndex,
+  type StopTime, type Trip
+} from "@gb-transit/gtfs-loader";
+import type { Transfer } from "../journey/Journey.js";
 
 /**
  * Returns trips, transfers, interchange time and calendars from a GTFS zip.
  */
-export class GtfsLoader {
-
-  constructor(
-    private readonly timeParser: TimeParser
-  ) {}
-
-  public load(input: Readable): Promise<GtfsData> {
-    return new Promise(resolve => {
-      const processor = new StatefulGtfsLoader(this.timeParser);
-
-      input
-        .pipe(gtfs({ raw: true }))
-        .on("data", entity => processor[entity.type] && processor[entity.type](entity.data))
-        .on("end", () => resolve(processor.finalize()));
-    });
-
-  }
-
+export async function loadGtfs(source: GTFSSource): Promise<GtfsData> {
+  return toGtfsData(await loadGTFS(source));
 }
 
 /**
- * Encapsulation of the GTFS data while it is being loaded from the zip
+ * Puts a feed into the terms this planner works in.
+ *
+ * Reading the feed is `@gb-transit/gtfs-loader`'s job, and `normalise` puts what it read into the
+ * terms a journey planner needs: stops resolved to the station they belong to, footpaths and
+ * interchange times defined at those stations, the calls a passenger can actually use picked out of
+ * each trip, and a trip added for each coupling so that staying on a vehicle that carries on as
+ * another service is planned as one trip rather than a change.
+ *
+ * What is left here is turning that into the indexes a transfer pattern is read against: a pattern
+ * names the stations a journey calls at, so the question asked of the timetable is always "what runs
+ * between these two stations", and that is answered by indexing every pair of stations a trip can be
+ * boarded and alighted between.
  */
-class StatefulGtfsLoader {
-  private readonly trips: Trip[] = [];
-  private readonly transfers = {};
-  private readonly interchange = {};
-  private readonly calendars: CalendarIndex = {};
-  private readonly dates = {};
-  private readonly stopTimes = {};
-  private readonly stops = {};
+export function toGtfsData(feed: GTFSFeed): GtfsData {
+  const { trips, calls, transfers, interchange, stations } = normalise(feed);
 
-  constructor(
-    private readonly timeParser: TimeParser
-  ) {}
+  return {
+    trips: indexTripsByLeg(trips, calls, stations),
+    transfers: indexTransfersByDestination(transfers),
+    interchange,
+    stops: feed.stops,
+    stations
+  };
+}
 
-  public link(row: any): void {
-    const t = {
-      origin: row.from_stop_id,
-      destination: row.to_stop_id,
-      duration: +row.duration,
-      startTime: this.timeParser.getTime(row.start_time),
-      endTime: this.timeParser.getTime(row.end_time)
+/**
+ * Index every trip under each pair of stations it can be boarded and alighted between, obeying the
+ * pick up and set down markers of its calls.
+ */
+function indexTripsByLeg(trips: Trip[], calls: StopTime[][], stations: Map<StopID, StopID>): TripIndex {
+  const index: TripIndex = {};
+
+  for (let t = 0; t < trips.length; t++) {
+    const trip: TripCalls = {
+      trip: trips[t],
+      calls: calls[t],
+      stations: calls[t].map(c => stations.get(c.stop) ?? c.stop)
     };
 
-    pushNested(t, this.transfers, row.from_stop_id, row.to_stop_id);
-  }
-
-  public calendar(row: any): void {
-    this.calendars[row.service_id] = {
-      serviceId: row.service_id,
-      startDate: +row.start_date,
-      endDate: +row.end_date,
-      days: {
-        0: row.sunday === "1",
-        1: row.monday === "1",
-        2: row.tuesday === "1",
-        3: row.wednesday === "1",
-        4: row.thursday === "1",
-        5: row.friday === "1",
-        6: row.saturday === "1"
-      },
-      include: {},
-      exclude: {}
-    };
-  }
-
-  public calendar_date(row: any): void {
-    setNested(row.exception_type === "1", this.dates, row.service_id, row.date);
-  }
-
-  public trip(row: any): void {
-    this.trips.push({ serviceId: row.service_id, tripId: row.trip_id, stopTimes: [], service: {} as any });
-  }
-
-  public stop_time(row: any): void {
-    const stopTime = {
-      stop: row.stop_id,
-      departureTime: this.timeParser.getTime(row.departure_time),
-      arrivalTime: this.timeParser.getTime(row.arrival_time),
-      pickUp: row.pickup_type !== "1",
-      dropOff: row.drop_off_type !== "1"
-    };
-
-    pushNested(stopTime, this.stopTimes, row.trip_id);
-  }
-
-  public transfer(row: any): void {
-    if (row.from_stop_id === row.to_stop_id) {
-      this.interchange[row.from_stop_id] = +row.min_transfer_time;
-    }
-    else {
-      const t = {
-        origin: row.from_stop_id,
-        destination: row.to_stop_id,
-        duration: +row.min_transfer_time,
-        startTime: 0,
-        endTime: Number.MAX_SAFE_INTEGER
-      };
-
-      pushNested(t, this.transfers, row.from_stop_id, row.to_stop_id);
-    }
-  }
-
-  public stop(row: any): void {
-    const stop = {
-      id: row.stop_id,
-      code: row.stop_code,
-      name: row.stop_name,
-      description: row.stop_desc,
-      latitude: +row.stop_lat,
-      longitude: +row.stop_lon,
-      timezone: row.zone_id
-    };
-
-    setNested(stop, this.stops, row.stop_id);
-  }
-
-  public finalize(): GtfsData {
-    const services = {};
-    const trips = {};
-
-    for (const c of Object.values(this.calendars)) {
-      services[c.serviceId] = new Service(c.startDate, c.endDate, c.days, this.dates[c.serviceId] || {});
-    }
-
-    for (const trip of this.trips) {
-      trip.stopTimes = this.stopTimes[trip.tripId];
-      trip.service = services[trip.serviceId];
-
-      for (let i = 0; i < trip.stopTimes.length - 1; i++) {
-        if (trip.stopTimes[i].pickUp) {
-          for (let j = i + 1; j < trip.stopTimes.length; j++) {
-            if (trip.stopTimes[j].dropOff) {
-              pushNested(trip, trips, trip.stopTimes[i].stop, trip.stopTimes[j].stop);
-            }
+    for (let i = 0; i < trip.calls.length - 1; i++) {
+      if (trip.calls[i].pickUp) {
+        for (let j = i + 1; j < trip.calls.length; j++) {
+          // two calls at one station are a stop and a start, not a journey between places
+          if (trip.calls[j].dropOff && trip.stations[i] !== trip.stations[j]) {
+            addTrip(index, trip.stations[i], trip.stations[j], trip);
           }
         }
       }
     }
-
-    return { trips, transfers: this.transfers, interchange: this.interchange, stops: this.stops };
   }
 
+  return index;
 }
 
 /**
- * Trips indexed by origin and destination
+ * `normalise` returns footpaths as a flat list, the planner asks for them by origin and destination.
  */
-export type TripIndex = Record<StopID, Record<StopID, Trip[]>>;
-/**
- * Transfers indexed by origin and destination
- */
-export type TransferIndex = Record<StopID, Record<StopID, Transfer[]>>;
+function indexTransfersByDestination(transfers: Transfer[]): TransferIndex {
+  const index: TransferIndex = {};
+
+  for (const transfer of transfers) {
+    index[transfer.origin] ??= {};
+    index[transfer.origin][transfer.destination] ??= [];
+    index[transfer.origin][transfer.destination].push(transfer);
+  }
+
+  return index;
+}
+
+function addTrip(index: TripIndex, origin: StopID, destination: StopID, trip: TripCalls): void {
+  index[origin] ??= {};
+  index[origin][destination] ??= [];
+  index[origin][destination].push(trip);
+}
 
 /**
- * Index of stop to interchange time
+ * A trip as the planner reads it: the calls a passenger can use, and the station each one is at.
+ *
+ * The feed's stop times are not rewritten, so a trip keeps the stopping pattern it was published
+ * with, passing points and all. Where a call is is answered here instead. One of these is made per
+ * trip and shared by every entry of the index that names it.
  */
-export type Interchange = Record<StopID, Time>;
+export interface TripCalls {
+  trip: Trip;
+  /** the calls a passenger can board or alight at, in order */
+  calls: StopTime[];
+  /** the station of each call, parallel to `calls` */
+  stations: StopID[];
+}
+
+/**
+ * Trips indexed by the origin and destination station they can be used between
+ */
+export type TripIndex = Record<StopID, Record<StopID, TripCalls[]>>;
+
+/**
+ * Transfers indexed by origin and destination station
+ */
+export type TransferIndex = Record<StopID, Record<StopID, Transfer[]>>;
 
 /**
  * Contents of the GTFS zip file
@@ -176,5 +119,8 @@ export type GtfsData = {
   trips: TripIndex,
   transfers: TransferIndex,
   interchange: Interchange,
-  stops: StopIndex
+  /** the feed's stops, as it gave them, which may identify individual platforms */
+  stops: StopIndex,
+  /** feed stop id to the station it belongs to, which is what journeys are planned between */
+  stations: Map<StopID, StopID>
 };

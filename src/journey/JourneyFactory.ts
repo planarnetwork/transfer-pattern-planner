@@ -1,5 +1,5 @@
-import { AnyLeg, isTransfer, Journey } from "./Journey";
-import { Time } from "../gtfs/Gtfs";
+import type { Time } from "@gb-transit/gtfs-loader";
+import { type AnyLeg, isTransfer, type Journey } from "./Journey.js";
 
 /**
  * Creates journeys from an array of legs.

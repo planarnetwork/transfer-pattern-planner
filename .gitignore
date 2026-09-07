@@ -1,6 +1,4 @@
 node_modules/
 .idea/
 dist/
-.nyc_output/
-report*.json
-coverage.lcov
+*.zip
