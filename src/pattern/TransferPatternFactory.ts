@@ -28,12 +28,11 @@ export class TransferPatternFactory {
     date: DateNumber,
     dow: DayOfWeek
   ): TransferPattern[] {
-    return origins.map(origin => this.getTransferPatternForOrigin(origin, origins, destinations, date, dow));
+    return origins.map(origin => this.getTransferPatternForOrigin(origin, destinations, date, dow));
   }
 
   private getTransferPatternForOrigin(
     origin: StopIdx,
-    origins: StopIdx[],
     destinations: StopIdx[],
     date: DateNumber,
     dow: DayOfWeek
@@ -43,7 +42,7 @@ export class TransferPatternFactory {
     for (const destination of destinations) {
       // a pair with no pattern between them is not an error, there is just no journey to plan
       for (const patternStops of this.patternRepository.getPatterns(origin, destination)) {
-        if (this.doesNotContainGroupStops(patternStops, origins, destinations)) {
+        if (this.doesNotContainAnotherDestination(patternStops, destinations)) {
           let treeNode = tree;
 
           for (const stop of [...patternStops, destination]) {
@@ -66,8 +65,13 @@ export class TransferPatternFactory {
     );
   }
 
-  private doesNotContainGroupStops(pattern: StopIdx[], origins: StopIdx[], destinations: StopIdx[]): boolean {
-    return origins.every(s => !pattern.includes(s)) && destinations.every(s => !pattern.includes(s));
+  /**
+   * A pattern changing at another destination is dropped because the pattern ending there is in the
+   * same tree, so the journey is offered once rather than twice. Origins are not filtered this way:
+   * each has its own tree and nothing joins them, so such a pattern would have no substitute.
+   */
+  private doesNotContainAnotherDestination(pattern: StopIdx[], destinations: StopIdx[]): boolean {
+    return destinations.every(s => !pattern.includes(s));
   }
 
   private getPatternNode(
