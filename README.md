@@ -30,8 +30,9 @@ below use `require`; the equivalent `import` is the same names from the same pla
 
 Everything the package root exports runs in a browser as readily as in node: the feed and the
 patterns are both read from whatever the environment can give bytes from, and decompressed with
-`DecompressionStream`, which each of them has. The one exception is `Container`, which reads paths
-off the file system and so lives at `transfer-pattern-planner/node`.
+`DecompressionStream`, which each of them has. What reads a file system - `Container`, and
+`DirectoryPatternProvider` - lives at `transfer-pattern-planner/node` instead, so that nothing a
+bundler follows from the root resolves a node module.
 
 Reading the feed is [`@gb-transit/gtfs-loader`](https://www.npmjs.com/package/@gb-transit/gtfs-loader)'s
 job. Scanning one to find patterns is [raptor](https://github.com/planarnetwork/raptor)'s, and it is
