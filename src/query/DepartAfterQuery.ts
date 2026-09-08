@@ -1,21 +1,53 @@
 import type { DayOfWeek, StopID, Time } from "@gb-transit/gtfs-loader";
+import type { GtfsData } from "../gtfs/GtfsLoader.js";
+import { type StopIdx, type StopTable, UNKNOWN_STOP } from "../gtfs/StopTable.js";
 import type { Journey } from "../journey/Journey.js";
-import type { JourneyFactory } from "../journey/JourneyFactory.js";
-import type { OriginDepartureTimes, TransferPatternPlanner } from "../pattern/TransferPatternPlanner.js";
-import { type StopIdx, type StopTable, UNKNOWN_STOP } from "../StopTable.js";
+import { JourneyFactory } from "../journey/JourneyFactory.js";
+import { TimetableLegRepository } from "../pattern/repository/TimetableLegRepository.js";
+import type { TransferPatternRepository } from "../pattern/repository/TransferPatternRepository.js";
+import { TransferRepository } from "../pattern/repository/TransferRepository.js";
+import { TransferPatternFactory } from "../pattern/TransferPatternFactory.js";
+import { type OriginDepartureTimes, TransferPatternPlanner } from "../pattern/TransferPatternPlanner.js";
 import type { JourneyFilter } from "./JourneyFilter.js";
+import { MultipleCriteriaFilter } from "./MultipleCriteriaFilter.js";
 
 /**
  * Search for journeys between a set of origin and destinations departing after a given time.
+ *
+ * A feed and the transfer patterns for it are all this needs, and both are loaded the same way
+ * wherever this runs. The stop table is the one they were both read against, which is what lets
+ * them speak of a station the same way:
+ *
+ * ```
+ * const stops = new StopTable();
+ * const [gtfs, patterns] = await Promise.all([
+ *   loadGTFSFromUrl("gtfs.zip").then(feed => toGtfsData(feed, stops)),
+ *   loadTransferPatternsFromUrl("transfer-patterns.br", { stops })
+ * ]);
+ *
+ * const query = new DepartAfterQuery(gtfs, patterns, stops);
+ * ```
  */
 export class DepartAfterQuery {
 
+  private readonly planner: TransferPatternPlanner;
+  private readonly resultsFactory = new JourneyFactory();
+
   constructor(
-    private readonly planner: TransferPatternPlanner,
-    private readonly resultsFactory: JourneyFactory,
+    gtfs: GtfsData,
+    patterns: TransferPatternRepository,
     private readonly stops: StopTable,
-    private readonly filters: JourneyFilter[] = []
-  ) { }
+    private readonly filters: JourneyFilter[] = [new MultipleCriteriaFilter()]
+  ) {
+    this.planner = new TransferPatternPlanner(
+      new TransferPatternFactory(
+        patterns,
+        new TimetableLegRepository(gtfs.trips, stops),
+        new TransferRepository(gtfs.transfers),
+        gtfs.interchange
+      )
+    );
+  }
 
   /**
    * Plan a journey between the origin and destination set of stops on the given date and time

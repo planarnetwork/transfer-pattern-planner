@@ -4,7 +4,7 @@ import {
   loadTransferPatterns, loadTransferPatternsFromUrl, toLines
 } from "../../../../src/pattern/repository/TransferPatternLoader.js";
 import type { TransferPatternRepository } from "../../../../src/pattern/repository/TransferPatternRepository.js";
-import { StopTable } from "../../../../src/StopTable.js";
+import { StopTable } from "../../../../src/gtfs/StopTable.js";
 import { at, named } from "../../util.js";
 
 /**

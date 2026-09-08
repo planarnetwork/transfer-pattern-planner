@@ -1,4 +1,4 @@
-import type { StopIdx } from "../../StopTable.js";
+import type { StopIdx } from "../../gtfs/StopTable.js";
 
 /**
  * The transfer patterns between two stations.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { NO_NODE, type PatternTree, readPatternTree } from "../../../../src/pattern/repository/PatternTree.js";
-import { StopTable } from "../../../../src/StopTable.js";
+import { StopTable } from "../../../../src/gtfs/StopTable.js";
 import { at, named, stopsFor } from "../../util.js";
 
 /**

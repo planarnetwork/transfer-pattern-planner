@@ -1,4 +1,4 @@
-import type { StopIdx, StopTable } from "../../StopTable.js";
+import type { StopIdx, StopTable } from "../../gtfs/StopTable.js";
 import { CODE_WIDTH, sharedStops } from "./PatternFormat.js";
 
 /** The parent of a node that starts a pattern, so there is nothing before it */

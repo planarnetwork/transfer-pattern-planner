@@ -1,4 +1,4 @@
-import type { StopIdx } from "../../StopTable.js";
+import type { StopIdx } from "../../gtfs/StopTable.js";
 import type { TransferIndex } from "../../gtfs/GtfsLoader.js";
 import type { Transfer } from "../../journey/Journey.js";
 

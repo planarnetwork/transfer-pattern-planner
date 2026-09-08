@@ -1,7 +1,7 @@
 import type { Duration, ServiceCalendar, StopID, StopTime, Time, Trip } from "@gb-transit/gtfs-loader";
 import type { TripCalls } from "../../src/gtfs/GtfsLoader.js";
 import type { TimetableLeg, Transfer } from "../../src/journey/Journey.js";
-import { type StopIdx, StopTable } from "../../src/StopTable.js";
+import { type StopIdx, StopTable } from "../../src/gtfs/StopTable.js";
 
 /**
  * A timetable leg between two stops, calling at both and nowhere else.

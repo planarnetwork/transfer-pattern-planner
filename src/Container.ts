@@ -1,9 +1,8 @@
 import * as fs from "node:fs";
-import { createQuery } from "./createQuery.js";
 import { loadGtfs } from "./gtfs/GtfsLoader.js";
 import { loadTransferPatterns } from "./pattern/repository/TransferPatternLoader.js";
-import type { DepartAfterQuery } from "./query/DepartAfterQuery.js";
-import { StopTable } from "./StopTable.js";
+import { DepartAfterQuery } from "./query/DepartAfterQuery.js";
+import { StopTable } from "./gtfs/StopTable.js";
 
 /**
  * Reads the feed and the patterns from the paths the environment names.
@@ -28,7 +27,7 @@ export class Container {
 
     console.log(`Memory usage: ${Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100} MB`);
 
-    return createQuery(gtfs, patterns, stops);
+    return new DepartAfterQuery(gtfs, patterns, stops);
   }
 
 }

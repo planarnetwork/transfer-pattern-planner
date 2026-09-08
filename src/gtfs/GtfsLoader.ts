@@ -3,7 +3,7 @@ import {
   type StopTime, type Trip
 } from "@gb-transit/gtfs-loader";
 import type { Transfer } from "../journey/Journey.js";
-import type { StopIdx, StopTable } from "../StopTable.js";
+import type { StopIdx, StopTable } from "../gtfs/StopTable.js";
 
 /**
  * Returns trips, transfers, interchange time and calendars from a GTFS zip.

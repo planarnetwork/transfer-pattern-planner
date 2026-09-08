@@ -1,6 +1,6 @@
 import type { DateNumber, DayOfWeek, Time } from "@gb-transit/gtfs-loader";
 import type { AnyLeg } from "../journey/Journey.js";
-import type { StopIdx } from "../StopTable.js";
+import type { StopIdx } from "../gtfs/StopTable.js";
 import type { TransferPatternFactory } from "./TransferPatternFactory.js";
 
 /**

@@ -1,6 +1,6 @@
 import type { DateNumber, DayOfWeek } from "@gb-transit/gtfs-loader";
 import type { InterchangeTimes } from "../gtfs/GtfsLoader.js";
-import type { StopIdx } from "../StopTable.js";
+import type { StopIdx } from "../gtfs/StopTable.js";
 import type { TimetableLegRepository } from "./repository/TimetableLegRepository.js";
 import type { TransferPatternRepository } from "./repository/TransferPatternRepository.js";
 import type { TransferRepository } from "./repository/TransferRepository.js";

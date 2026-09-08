@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { TripCalls, TripIndex } from "../../../../src/gtfs/GtfsLoader.js";
 import { TimetableLegRepository } from "../../../../src/pattern/repository/TimetableLegRepository.js";
-import type { StopIdx } from "../../../../src/StopTable.js";
+import type { StopIdx } from "../../../../src/gtfs/StopTable.js";
 import { at, calls, st, stopsFor } from "../../util.js";
 
 describe("TimetableLegRepository", () => {

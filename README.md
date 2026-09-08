@@ -113,12 +113,11 @@ const results = query.plan(
 
 ### Wiring it up yourself
 
-The container is a convenience. `createQuery` is the whole of the wiring between having a feed and
-its patterns and being able to plan:
+The container is a convenience. A feed and the patterns for it are all a query needs:
 
 ```javascript
 const fs = require("fs");
-const { createQuery, loadGtfs, loadTransferPatterns, StopTable } = require("transfer-pattern-planner");
+const { DepartAfterQuery, loadGtfs, loadTransferPatterns, StopTable } = require("transfer-pattern-planner");
 
 // one table of stations for the two of them, added to by whichever reaches a station first
 const stops = new StopTable();
@@ -127,13 +126,12 @@ const [gtfs, patterns] = await Promise.all([
   loadTransferPatterns(fs.createReadStream("transfer-patterns.br"), { stops })
 ]);
 
-const query = createQuery(gtfs, patterns, stops);
+const query = new DepartAfterQuery(gtfs, patterns, stops);
 const journeys = query.plan(["NRW"], ["LST"], new Date(), 9 * 60 * 60);
 ```
 
 Use `toGtfsData(feed, stops)` if you already have a feed from `@gb-transit/gtfs-loader`, and pass
-your own `JourneyFilter[]` as the fourth argument to `createQuery` to replace the default
-`MultipleCriteriaFilter`.
+your own `JourneyFilter[]` as the fourth argument to replace the default `MultipleCriteriaFilter`.
 
 ### Stations, and how they are named
 
@@ -154,7 +152,7 @@ downloads overlap, each parsed as it arrives rather than after it has all been c
 
 ```javascript
 import { loadGTFSFromUrl } from "@gb-transit/gtfs-loader";
-import { loadTransferPatternsFromUrl, toGtfsData, createQuery, StopTable } from "transfer-pattern-planner";
+import { loadTransferPatternsFromUrl, toGtfsData, DepartAfterQuery, StopTable } from "transfer-pattern-planner";
 
 const stops = new StopTable();
 const [gtfs, patterns] = await Promise.all([
@@ -162,7 +160,7 @@ const [gtfs, patterns] = await Promise.all([
   loadTransferPatternsFromUrl("/transfer-patterns.br", { stops })
 ]);
 
-const query = createQuery(gtfs, patterns, stops);
+const query = new DepartAfterQuery(gtfs, patterns, stops);
 const journeys = query.plan(["NRW"], ["LST"], new Date(), 9 * 60 * 60);
 ```
 

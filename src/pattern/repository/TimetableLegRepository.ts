@@ -1,5 +1,5 @@
 import type { DateNumber, DayOfWeek, StopTime } from "@gb-transit/gtfs-loader";
-import type { StopIdx, StopTable } from "../../StopTable.js";
+import type { StopIdx, StopTable } from "../../gtfs/StopTable.js";
 import type { TripCalls, TripIndex } from "../../gtfs/GtfsLoader.js";
 import type { TimetableLeg } from "../../journey/Journey.js";
 

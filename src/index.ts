@@ -7,8 +7,7 @@ export type {
   Calendar, CalendarIndex, DateIndex, DateNumber, DayOfWeek, Duration, GTFSSource, Interchange,
   ServiceCalendar, ServiceID, Stop, StopID, StopIndex, StopTime, Time, Trip, TripID
 } from "@gb-transit/gtfs-loader";
-export * from "./createQuery.js";
-export * from "./StopTable.js";
+export * from "./gtfs/StopTable.js";
 export * from "./gtfs/GtfsLoader.js";
 export * from "./journey/Journey.js";
 export * from "./journey/JourneyFactory.js";

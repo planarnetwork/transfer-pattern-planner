@@ -1,5 +1,5 @@
 import { type GTFSSource, toChunks } from "@gb-transit/gtfs-loader";
-import { StopTable } from "../../StopTable.js";
+import { StopTable } from "../../gtfs/StopTable.js";
 import { InMemoryTransferPatternRepository } from "./InMemoryTransferPatternRepository.js";
 import { readPatternTree } from "./PatternTree.js";
 

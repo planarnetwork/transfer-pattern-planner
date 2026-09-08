@@ -1,6 +1,6 @@
 import type { Duration, Time } from "@gb-transit/gtfs-loader";
 import type { TimetableLeg, Transfer } from "../journey/Journey.js";
-import type { StopIdx } from "../StopTable.js";
+import type { StopIdx } from "../gtfs/StopTable.js";
 import type { TransferPatternNode } from "./TransferPatternNode.js";
 import type { JourneyLegs, OriginDepartureTimes } from "./TransferPatternPlanner.js";
 

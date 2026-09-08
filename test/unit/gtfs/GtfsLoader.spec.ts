@@ -2,7 +2,7 @@ import type { GTFSFeed, Stop, StopID } from "@gb-transit/gtfs-loader";
 import { describe, expect, it } from "vitest";
 import type { GtfsData } from "../../../src/gtfs/GtfsLoader.js";
 import { toGtfsData } from "../../../src/gtfs/GtfsLoader.js";
-import { StopTable } from "../../../src/StopTable.js";
+import { StopTable } from "../../../src/gtfs/StopTable.js";
 import { st, trip } from "../util.js";
 
 /**

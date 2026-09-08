@@ -1,4 +1,4 @@
-import type { StopIdx } from "../../StopTable.js";
+import type { StopIdx } from "../../gtfs/StopTable.js";
 import type { PatternTree } from "./PatternTree.js";
 import type { TransferPatternRepository } from "./TransferPatternRepository.js";
 
