@@ -6,6 +6,7 @@ import type { Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import * as zlib from "node:zlib";
 import { FrontCoder } from "../pattern/format/FrontCoder.js";
+import { CODE_WIDTH } from "../pattern/format/PatternFormat.js";
 
 /**
  * How hard the finished file is compressed. Five is where brotli stops being free: it holds a few
@@ -67,7 +68,11 @@ export class TransferPatternMerge {
 
   /**
    * Deal every line into the file for the station it starts from, and return those stations in
-   * order, which is the order their patterns belong in
+   * order, which is the order their patterns belong in.
+   *
+   * A bucket is the whole station rather than its first letter. Every line in it begins with that
+   * station, so the buckets still concatenate in order, but a national feed spreads over 2,786 of
+   * them rather than 26 - and it is one bucket at a time that patternsIn holds in memory.
    */
   private async deal(inputs: string[]): Promise<string[]> {
     const files = new Map<string, fs.WriteStream>();
@@ -83,7 +88,7 @@ export class TransferPatternMerge {
           continue;
         }
 
-        const bucket = line.slice(0, 1);
+        const bucket = line.slice(0, CODE_WIDTH);
 
         let file = files.get(bucket);
 
@@ -134,8 +139,18 @@ export class TransferPatternMerge {
     }
   }
 
+  /**
+   * Named by the character codes of the station rather than the station, so a code that is not a
+   * filename stays one, and two stations never share a file.
+   */
   private bucketFile(bucket: string): string {
-    return path.join(this.workDir, `patterns-${bucket.charCodeAt(0)}.txt`);
+    let name = 0;
+
+    for (let i = 0; i < bucket.length; i++) {
+      name = (name << 8) | bucket.charCodeAt(i);
+    }
+
+    return path.join(this.workDir, `patterns-${name}.txt`);
   }
 
 }
