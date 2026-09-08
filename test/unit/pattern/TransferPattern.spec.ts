@@ -67,4 +67,32 @@ describe("TransferPattern", () => {
       [tr("A", "B", 10), tt("B", "C", 1100, 1115), tt("C", "D", 1130, 1200)]
     ]);
   });
+
+  it("will use a footpath on a branch that reaches it inside its window, having tried one that does not", () => {
+    const child3 = new TransferPatternNode(
+      [tt("C", "D", 1130, 1200)],
+      [],
+      [],
+      20
+    );
+
+    // both branches ask this node for the same footpath, the first of them before its window opens
+    const child2 = new TransferPatternNode(
+      [],
+      [tr("B", "C", 10, 1000, 1200)],
+      [child3],
+      15
+    );
+
+    const walk = new TransferPatternNode([], [tr("A", "B", 10)], [child2], 10);
+    const amble = new TransferPatternNode([], [tr("A", "B", 1000)], [child2], 10);
+
+    const pattern = new TransferPattern(at(stops, "A"), [walk, amble]);
+    const journeys = pattern.getJourneys(new Map([[at(stops, "A"), 10]]));
+
+    expect(journeys).toEqual([
+      [tr("A", "B", 1000), tr("B", "C", 10, 1000, 1200), tt("C", "D", 1130, 1200)]
+    ]);
+  });
+
 });

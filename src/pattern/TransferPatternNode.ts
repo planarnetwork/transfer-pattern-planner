@@ -8,7 +8,6 @@ import type { JourneyLegs } from "./TransferPatternPlanner.js";
 export class TransferPatternNode {
 
   private timetableLegIndex: number = 0;
-  private transferIndex: number = 0;
 
   constructor(
     public readonly timetableLegs: TimetableLeg[],
@@ -58,15 +57,11 @@ export class TransferPatternNode {
     return null;
   }
 
+  /**
+   * Unlike the timetable legs the footpaths are not in time order and a window that has not opened yet will open at a
+   * later time, so there is no cursor to move: the list, which is short, is scanned in full every time.
+   */
   public findTransfer(departureTime: Time): Transfer | null {
-    for (; this.transferIndex < this.transfers.length; this.transferIndex++) {
-      const leg = this.transfers[this.transferIndex];
-
-      if (leg.startTime <= departureTime && leg.endTime >= departureTime) {
-        return leg;
-      }
-    }
-
-    return null;
+    return this.transfers.find(t => t.startTime <= departureTime && t.endTime >= departureTime) ?? null;
   }
 }
