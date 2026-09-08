@@ -15,7 +15,8 @@ const DEFAULT_LIMIT = 100;
  * gigabyte held; one station is a few thousand and a few tens of kilobytes.
  *
  * `prepare` has to be called first, which `DepartAfterQuery` does. Nothing is read twice: a station
- * being read when it is asked for again is waited on rather than fetched a second time.
+ * being read when it is asked for again is waited on rather than fetched a second time. A read that
+ * fails is not held against the station, which is asked for again the next time a query wants it.
  *
  * One of these serves one query at a time. Two queries running at once share what it holds, which
  * is what makes it worth having, but a limit smaller than the stations they need between them will
@@ -77,13 +78,15 @@ export class LazyTransferTreeRepository implements TransferPatternRepository {
     let reading = this.reading.get(origin);
 
     if (reading === undefined) {
-      reading = this.read(origin);
+      // forgotten as soon as it settles, however it settles: a rejection left in place would be
+      // handed to every later prepare, so one failed read would take the station out for good.
+      // Clearing it here rather than after the await also leaves a newer read of its own alone
+      reading = this.read(origin).finally(() => this.reading.delete(origin));
       this.reading.set(origin, reading);
     }
 
     const patterns = await reading;
 
-    this.reading.delete(origin);
     this.stations.delete(origin);
     this.stations.set(origin, patterns);
   }

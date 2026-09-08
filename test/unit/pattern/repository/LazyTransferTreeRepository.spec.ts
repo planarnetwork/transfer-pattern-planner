@@ -133,6 +133,33 @@ describe("LazyTransferTreeRepository", () => {
     }
   });
 
+  it("reads a station again after a read that failed", async () => {
+    // a rejection kept in place would take the station out of the planner until the process went
+    const stops = new StopTable();
+    const asked: string[] = [];
+    let fail = true;
+    const patterns = new LazyTransferTreeRepository({
+      async get(station: string) {
+        asked.push(station);
+
+        if (fail) {
+          fail = false;
+          throw new Error("503");
+        }
+
+        return zlib.brotliCompressSync(Buffer.from(`${FILES[station].join("\n")}\n`));
+      }
+    }, stops);
+    const lst = stops.intern("LST");
+
+    await expect(patterns.prepare([lst])).rejects.toThrow("503");
+    await patterns.prepare([lst]);
+
+    expect(asked).toEqual(["LST", "LST"]);
+    expect(named(stops, patterns.getPatterns(lst, stops.intern("NRW"))))
+      .toEqual([[], ["CBG"], ["CBG", "ELY"]]);
+  });
+
   it("reads a station once when two queries ask for it at the same time", async () => {
     const stops = new StopTable();
     const p = provider();
