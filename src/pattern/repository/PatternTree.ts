@@ -1,4 +1,4 @@
-import type { StopID } from "@gb-transit/gtfs-loader";
+import { internStop, type StopIdx, type StopTable } from "../../StopTable.js";
 import { CODE_WIDTH, sharedStops } from "./PatternFormat.js";
 
 /**
@@ -19,23 +19,10 @@ export interface PatternTree {
   parent: Int32Array;
   /** for each origin, the patterns from it by where they end. A pattern is the node it ends on */
   from: (Map<StopIdx, number[]> | undefined)[];
-  /** stop index to station code, for naming the stops of a pattern */
-  stopIds: StopID[];
-  /** station code to stop index, for reading a query's origins and destinations */
-  stopIndex: Map<StopID, StopIdx>;
 }
-
-/**
- * A stop as the tree holds it. The station codes are an outside detail, exchanged for one of these
- * when a query arrives and only named again when a pattern is handed back.
- */
-export type StopIdx = number;
 
 /** The parent of a node that starts a pattern, so there is nothing before it */
 export const NO_NODE = -1;
-
-/** Stops are held in a Uint16Array, so this is one more than the highest index it can name */
-const STOP_LIMIT = 65536;
 
 /** Nodes a tree starts with room for, doubling from there as the file is read */
 const INITIAL_NODES = 1024;
@@ -47,12 +34,11 @@ const INITIAL_NODES = 1024;
  * rebuilt as the file is read: no path per line, and no string per pattern.
  */
 export async function readPatternTree(
-  lines: AsyncIterable<string> | Iterable<string>
+  lines: AsyncIterable<string> | Iterable<string>,
+  stops: StopTable
 ): Promise<PatternTree> {
   const nodes = new PatternNodes();
   const from: (Map<StopIdx, number[]> | undefined)[] = [];
-  const stopIds: StopID[] = [];
-  const stopIndex = new Map<StopID, StopIdx>();
   // keyed by the character codes of a station rather than the station, so reading a line does not
   // cut a string out of it for every stop. A national file holds 37 million of them and 2,789 codes
   const ids = new Map<number, StopIdx>();
@@ -69,15 +55,7 @@ export async function readPatternTree(
     let id = ids.get(key);
 
     if (id === undefined) {
-      const code = line.slice(at, at + CODE_WIDTH);
-
-      if (stopIds.length === STOP_LIMIT) {
-        throw new Error(`Transfer patterns are held for up to ${STOP_LIMIT} stations, and this file names more`);
-      }
-
-      id = stopIds.length;
-      stopIds.push(code);
-      stopIndex.set(code, id);
+      id = internStop(stops, line.slice(at, at + CODE_WIDTH));
       ids.set(key, id);
     }
 
@@ -120,7 +98,7 @@ export async function readPatternTree(
     }
   }
 
-  return { ...nodes.build(), from, stopIds, stopIndex };
+  return { ...nodes.build(), from };
 }
 
 /**
@@ -128,7 +106,7 @@ export async function readPatternTree(
  *
  * The ends are left out, as they are what was asked for.
  */
-export function patternsBetween(tree: PatternTree, origin: StopIdx, destination: StopIdx): StopID[][] {
+export function patternsBetween(tree: PatternTree, origin: StopIdx, destination: StopIdx): StopIdx[][] {
   // a pattern is held once for both directions, so it hangs off whichever of its two ends the file
   // wrote first, and a journey the other way round is the same pattern read backwards
   const ends = tree.from[origin]?.get(destination) ?? tree.from[destination]?.get(origin);
@@ -138,12 +116,12 @@ export function patternsBetween(tree: PatternTree, origin: StopIdx, destination:
   }
 
   const patterns = ends.map(end => {
-    const stops: StopID[] = [];
+    const stops: StopIdx[] = [];
 
     // climbing runs from a pattern's last stop to its first, which is the order it is travelled in
     // when the end it hangs from is the destination rather than the origin
     for (let node = end; node !== NO_NODE; node = tree.parent[node]) {
-      stops.push(tree.stopIds[tree.stop[node]]);
+      stops.push(tree.stop[node]);
     }
 
     return (tree.stop[end] === origin ? stops : stops.reverse()).slice(1, -1);

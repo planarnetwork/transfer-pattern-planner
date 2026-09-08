@@ -1,4 +1,5 @@
 import { type GTFSSource, toChunks } from "@gb-transit/gtfs-loader";
+import { type StopTable, stopTable } from "../../StopTable.js";
 import { InMemoryTransferPatternRepository } from "./InMemoryTransferPatternRepository.js";
 import { readPatternTree } from "./PatternTree.js";
 
@@ -19,6 +20,11 @@ export interface LoadPatternOptions {
    * `Content-Encoding` says the transport has already decoded it.
    */
   compressed?: boolean;
+  /**
+   * The table the stations are numbered in. Pass the one the feed is read against, so that the two
+   * speak of a station the same way. One of its own is made where the patterns are read alone.
+   */
+  stops?: StopTable;
 }
 
 export interface FetchPatternOptions extends LoadPatternOptions {
@@ -40,8 +46,9 @@ export async function loadTransferPatterns(
   options: LoadPatternOptions = {}
 ): Promise<InMemoryTransferPatternRepository> {
   const compressed = options.compressed ?? !alreadyDecoded(source);
+  const stops = options.stops ?? stopTable();
 
-  return new InMemoryTransferPatternRepository(await readPatternTree(toLines(bytes(source, compressed))));
+  return new InMemoryTransferPatternRepository(await readPatternTree(toLines(bytes(source, compressed)), stops));
 }
 
 /**

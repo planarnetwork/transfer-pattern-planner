@@ -103,7 +103,7 @@ const { Container } = require("transfer-pattern-planner/node");
 
 const container = new Container();
 const query = await container.getQuery();
-const results = await query.plan(
+const results = query.plan(
     ["BHM", "BMO", "BSW", "BHI"],
     ["NRW"],
     new Date(),
@@ -113,35 +113,39 @@ const results = await query.plan(
 
 ### Wiring it up yourself
 
-The container is a convenience. The pieces can be assembled directly, which is what you want if the
-patterns come from somewhere other than a file - `InMemoryTransferPatternRepository` takes an index
-directly, and anything implementing `TransferPatternRepository` will do:
+The container is a convenience. `createQuery` is the whole of the wiring between having a feed and
+its patterns and being able to plan:
 
 ```javascript
 const fs = require("fs");
-const {
-  loadGtfs, loadTransferPatterns, JourneyFactory, DepartAfterQuery, MultipleCriteriaFilter,
-  TimetableLegRepository, TransferRepository, TransferPatternFactory, TransferPatternPlanner
-} = require("transfer-pattern-planner");
+const { createQuery, loadGtfs, loadTransferPatterns, stopTable } = require("transfer-pattern-planner");
 
-const gtfs = await loadGtfs(fs.createReadStream("gtfs.zip"));
-// or toGtfsData(feed) if you already have a feed from @gb-transit/gtfs-loader
-const patterns = await loadTransferPatterns(fs.createReadStream("transfer-patterns.br"));
+// one table of stations for the two of them, added to by whichever reaches a station first
+const stops = stopTable();
+const [gtfs, patterns] = await Promise.all([
+  loadGtfs(fs.createReadStream("gtfs.zip"), stops),
+  loadTransferPatterns(fs.createReadStream("transfer-patterns.br"), { stops })
+]);
 
-const factory = new TransferPatternFactory(
-  patterns,
-  new TimetableLegRepository(gtfs.trips),
-  new TransferRepository(gtfs.transfers),
-  gtfs.interchange
-);
-const query = new DepartAfterQuery(
-  new TransferPatternPlanner(factory),
-  new JourneyFactory(),
-  [new MultipleCriteriaFilter()]
-);
-
-const journeys = await query.plan(["NRW"], ["LST"], new Date(), 9 * 60 * 60);
+const query = createQuery(gtfs, patterns, stops);
+const journeys = query.plan(["NRW"], ["LST"], new Date(), 9 * 60 * 60);
 ```
+
+Use `toGtfsData(feed, stops)` if you already have a feed from `@gb-transit/gtfs-loader`, and pass
+your own `JourneyFilter[]` as the fourth argument to `createQuery` to replace the default
+`MultipleCriteriaFilter`.
+
+### Stations, and how they are named
+
+A station is a three character code in the feed and in the pattern file, and a number everywhere
+between a query and its results: the query exchanges the codes it was asked in for those numbers,
+and the legs of a journey are named again on the way out. That numbering is the `stopTable` above,
+which the feed and the patterns are both read against so that they speak of a station the same way.
+The two files are still read at the same time - whichever reaches a station first numbers it.
+
+Patterns can come from somewhere other than a file: `TransferPatternRepository` is a single method
+returning the patterns between two stations, and `InMemoryTransferPatternRepository` is the one that
+answers from a loaded file.
 
 ### In the browser
 
@@ -150,15 +154,16 @@ downloads overlap, each parsed as it arrives rather than after it has all been c
 
 ```javascript
 import { loadGTFSFromUrl } from "@gb-transit/gtfs-loader";
-import { loadTransferPatternsFromUrl, toGtfsData, createQuery } from "transfer-pattern-planner";
+import { loadTransferPatternsFromUrl, toGtfsData, createQuery, stopTable } from "transfer-pattern-planner";
 
+const stops = stopTable();
 const [gtfs, patterns] = await Promise.all([
-  loadGTFSFromUrl("/gtfs.zip").then(toGtfsData),
-  loadTransferPatternsFromUrl("/transfer-patterns.br")
+  loadGTFSFromUrl("/gtfs.zip").then(feed => toGtfsData(feed, stops)),
+  loadTransferPatternsFromUrl("/transfer-patterns.br", { stops })
 ]);
 
-const query = createQuery(gtfs, patterns);
-const journeys = await query.plan(["NRW"], ["LST"], new Date(), 9 * 60 * 60);
+const query = createQuery(gtfs, patterns, stops);
+const journeys = query.plan(["NRW"], ["LST"], new Date(), 9 * 60 * 60);
 ```
 
 Both files have to be readable by the page, which means the host either serves them from the same
@@ -169,8 +174,7 @@ it with `Content-Encoding: br` can, and the browser will have decoded the body b
 that is noticed from the header rather than decompressing what is already plain. Pass
 `{ compressed: false }` to say so for a file that arrives decompressed some other way.
 
-`createQuery` is the whole of the wiring between having a feed and its patterns and being able to
-plan, so `loadTransferPatterns` takes the same sources the feed loader does - a `Response`, a
+`loadTransferPatterns` takes the same sources the feed loader does - a `Response`, a
 `ReadableStream`, a `Blob`, the bytes, or a node stream.
 
 ## Contributing

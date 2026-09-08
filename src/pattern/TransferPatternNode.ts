@@ -14,7 +14,8 @@ export class TransferPatternNode {
     public readonly timetableLegs: TimetableLeg[],
     private readonly transfers: Transfer[],
     public children: TransferPatternNode[],
-    private readonly interchange: Duration
+    /** the time it takes to change at the station this node is, added on arriving here */
+    public readonly interchange: Duration
   ) {}
 
   /**

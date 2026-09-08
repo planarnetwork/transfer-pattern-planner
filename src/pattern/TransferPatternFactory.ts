@@ -1,4 +1,6 @@
-import type { DateNumber, DayOfWeek, Interchange, StopID } from "@gb-transit/gtfs-loader";
+import type { DateNumber, DayOfWeek } from "@gb-transit/gtfs-loader";
+import type { InterchangeTimes } from "../gtfs/GtfsLoader.js";
+import type { StopIdx } from "../StopTable.js";
 import type { TimetableLegRepository } from "./repository/TimetableLegRepository.js";
 import type { TransferPatternRepository } from "./repository/TransferPatternRepository.js";
 import type { TransferRepository } from "./repository/TransferRepository.js";
@@ -14,42 +16,45 @@ export class TransferPatternFactory {
     private readonly patternRepository: TransferPatternRepository,
     private readonly timetableLegRepository: TimetableLegRepository,
     private readonly transferRepository: TransferRepository,
-    private readonly interchange: Interchange
+    private readonly interchange: InterchangeTimes
   ) {}
 
   /**
    * Create a transfer pattern for every origin. Each transfer pattern may arrive at a different destination.
    */
-  public async getTransferPatterns(
-    origins: StopID[],
-    destinations: StopID[],
+  public getTransferPatterns(
+    origins: StopIdx[],
+    destinations: StopIdx[],
     date: DateNumber,
     dow: DayOfWeek
-  ): Promise<TransferPattern[]> {
-    const patterns = await this.patternRepository.getPatterns(origins, destinations);
-
-    return origins.map(o => this.getTransferPatternForOrigin(patterns, o, origins, destinations, date, dow));
+  ): TransferPattern[] {
+    return origins.map(origin => this.getTransferPatternForOrigin(origin, origins, destinations, date, dow));
   }
 
   private getTransferPatternForOrigin(
-    patterns: Record<string, string[][]>,
-    origin: StopID,
-    origins: StopID[],
-    destinations: StopID[],
+    origin: StopIdx,
+    origins: StopIdx[],
+    destinations: StopIdx[],
     date: DateNumber,
     dow: DayOfWeek
   ): TransferPattern {
-    const tree = { stop: origin, children: {} } as TransferPatternTreeNode;
+    const tree = { stop: origin, children: new Map() } as TransferPatternTreeNode;
 
     for (const destination of destinations) {
       // a pair with no pattern between them is not an error, there is just no journey to plan
-      for (const patternStops of patterns[origin + destination] ?? []) {
+      for (const patternStops of this.patternRepository.getPatterns(origin, destination)) {
         if (this.doesNotContainGroupStops(patternStops, origins, destinations)) {
           let treeNode = tree;
 
           for (const stop of [...patternStops, destination]) {
-            treeNode.children[stop] ??= { stop, parent: treeNode, children: {} };
-            treeNode = treeNode.children[stop];
+            let child = treeNode.children.get(stop);
+
+            if (child === undefined) {
+              child = { stop, parent: treeNode, children: new Map() };
+              treeNode.children.set(stop, child);
+            }
+
+            treeNode = child;
           }
         }
       }
@@ -57,12 +62,11 @@ export class TransferPatternFactory {
 
     return new TransferPattern(
       origin,
-      Object.values(tree.children).map(n => this.getPatternNode(n, date, dow)),
-      this.interchange
+      [...tree.children.values()].map(n => this.getPatternNode(n, date, dow))
     );
   }
 
-  private doesNotContainGroupStops(pattern: StopID[], origins: StopID[], destinations: StopID[]): boolean {
+  private doesNotContainGroupStops(pattern: StopIdx[], origins: StopIdx[], destinations: StopIdx[]): boolean {
     return origins.every(s => !pattern.includes(s)) && destinations.every(s => !pattern.includes(s));
   }
 
@@ -77,15 +81,15 @@ export class TransferPatternFactory {
     return new TransferPatternNode(
       timetableLegs,
       transfers,
-      Object.values(node.children).map(n => this.getPatternNode(n, date, dow)),
-      this.interchange[node.stop]
+      [...node.children.values()].map(n => this.getPatternNode(n, date, dow)),
+      this.interchange[node.stop] ?? 0
     );
   }
 
 }
 
 interface TransferPatternTreeNode {
-  stop: StopID,
+  stop: StopIdx,
   parent: TransferPatternTreeNode,
-  children: Record<StopID, TransferPatternTreeNode>
+  children: Map<StopIdx, TransferPatternTreeNode>
 }

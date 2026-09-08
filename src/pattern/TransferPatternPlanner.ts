@@ -1,5 +1,6 @@
-import type { DateNumber, DayOfWeek, StopID, Time } from "@gb-transit/gtfs-loader";
+import type { DateNumber, DayOfWeek, Time } from "@gb-transit/gtfs-loader";
 import type { AnyLeg } from "../journey/Journey.js";
+import type { StopIdx } from "../StopTable.js";
 import type { TransferPatternFactory } from "./TransferPatternFactory.js";
 
 /**
@@ -11,14 +12,14 @@ export class TransferPatternPlanner {
     private readonly transferPatternRepository: TransferPatternFactory,
   ) {}
 
-  public async plan(
+  public plan(
     originTimes: OriginDepartureTimes,
-    destinations: StopID[],
+    destinations: StopIdx[],
     date: DateNumber,
     dow: DayOfWeek
-  ): Promise<JourneyLegs[]> {
-    const origins = Object.keys(originTimes);
-    const patterns = await this.transferPatternRepository.getTransferPatterns(origins, destinations, date, dow);
+  ): JourneyLegs[] {
+    const origins = [...originTimes.keys()];
+    const patterns = this.transferPatternRepository.getTransferPatterns(origins, destinations, date, dow);
 
     return patterns.flatMap(pattern => pattern.getJourneys(originTimes));
   }
@@ -33,4 +34,4 @@ export type JourneyLegs = AnyLeg[];
 /**
  * Departure time for each origin
  */
-export type OriginDepartureTimes = Record<StopID, Time>;
+export type OriginDepartureTimes = Map<StopIdx, Time>;

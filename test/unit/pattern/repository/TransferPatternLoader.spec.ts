@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { InMemoryTransferPatternRepository } from "../../../../src/pattern/repository/InMemoryTransferPatternRepository.js";
 import { type PatternPath, readPatterns } from "../../../../src/pattern/repository/PatternFormat.js";
-import { readPatternTree } from "../../../../src/pattern/repository/PatternTree.js";
 import {
   loadTransferPatterns, loadTransferPatternsFromUrl, toLines
 } from "../../../../src/pattern/repository/TransferPatternLoader.js";
+import type { TransferPatternRepository } from "../../../../src/pattern/repository/TransferPatternRepository.js";
+import { type StopTable, stopTable } from "../../../../src/StopTable.js";
+import { at, named } from "../../util.js";
 
 /**
  * The lines below are the file as `npm run patterns` writes it, spelled out rather than produced by the code
@@ -47,45 +48,6 @@ describe("readPatterns", () => {
 
 });
 
-describe("InMemoryTransferPatternRepository", () => {
-
-  it("returns the stations between the ends, shortest pattern first", async () => {
-    const repository = await load(LONDON_TO_NORWICH);
-
-    expect(await repository.getPatterns(["LST"], ["NRW"])).toEqual({
-      LSTNRW: [[], ["CBG"], ["CBG", "ELY"]]
-    });
-  });
-
-  it("reads a pattern backwards for a journey the other way round", async () => {
-    const repository = await load(LONDON_TO_NORWICH);
-
-    expect(await repository.getPatterns(["NRW"], ["LST"])).toEqual({
-      NRWLST: [[], ["CBG"], ["ELY", "CBG"]]
-    });
-  });
-
-  it("gives no entry for a pair it holds no pattern for", async () => {
-    const repository = await load(["0LSTNRW"]);
-
-    expect(await repository.getPatterns(["LST"], ["EDB"])).toEqual({});
-  });
-
-  it("answers every origin and destination of a group", async () => {
-    const repository = await load(["0EUSMAN", "0LSTMAN"]);
-
-    expect(await repository.getPatterns(["MAN"], ["EUS", "LST"])).toEqual({
-      MANEUS: [[]],
-      MANLST: [[]]
-    });
-  });
-
-  async function load(lines: string[]) {
-    return new InMemoryTransferPatternRepository(await readPatternTree(lines));
-  }
-
-});
-
 describe("toLines", () => {
 
   it("puts a line back together across the chunks it arrived in", async () => {
@@ -114,30 +76,27 @@ describe("toLines", () => {
 describe("loadTransferPatterns", () => {
 
   it("decompresses the file the way a browser can", async () => {
-    const repository = await loadTransferPatterns(await brotli(`${LONDON_TO_NORWICH.join("\n")}\n`));
+    const stops = stopTable();
+    const repository = await loadTransferPatterns(await brotli(`${LONDON_TO_NORWICH.join("\n")}\n`), { stops });
 
-    expect(await repository.getPatterns(["LST"], ["NRW"])).toEqual({
-      LSTNRW: [[], ["CBG"], ["CBG", "ELY"]]
-    });
+    expect(londonToNorwich(repository, stops)).toEqual([[], ["CBG"], ["CBG", "ELY"]]);
   });
 
   it("reads bytes the transport has already decoded", async () => {
     const plain = new TextEncoder().encode(`${LONDON_TO_NORWICH.join("\n")}\n`);
-    const repository = await loadTransferPatterns(plain, { compressed: false });
+    const stops = stopTable();
+    const repository = await loadTransferPatterns(plain, { compressed: false, stops });
 
-    expect(await repository.getPatterns(["LST"], ["NRW"])).toEqual({
-      LSTNRW: [[], ["CBG"], ["CBG", "ELY"]]
-    });
+    expect(londonToNorwich(repository, stops)).toEqual([[], ["CBG"], ["CBG", "ELY"]]);
   });
 
   it("does not decompress a response the browser decoded for it", async () => {
     const body = new Blob([`${LONDON_TO_NORWICH.join("\n")}\n`]);
     const response = new Response(body, { headers: { "content-encoding": "br" } });
-    const repository = await loadTransferPatterns(response);
+    const stops = stopTable();
+    const repository = await loadTransferPatterns(response, { stops });
 
-    expect(await repository.getPatterns(["LST"], ["NRW"])).toEqual({
-      LSTNRW: [[], ["CBG"], ["CBG", "ELY"]]
-    });
+    expect(londonToNorwich(repository, stops)).toEqual([[], ["CBG"], ["CBG", "ELY"]]);
   });
 
 });
@@ -147,7 +106,9 @@ describe("loadTransferPatternsFromUrl", () => {
   it("fetches the file and reads it", async () => {
     const compressed = await brotli(`${LONDON_TO_NORWICH.join("\n")}\n`);
     const asked: string[] = [];
+    const stops = stopTable();
     const repository = await loadTransferPatternsFromUrl("https://example.com/patterns.br", {
+      stops,
       fetch: async (url) => {
         asked.push(String(url));
         return new Response(compressed);
@@ -155,9 +116,7 @@ describe("loadTransferPatternsFromUrl", () => {
     });
 
     expect(asked).toEqual(["https://example.com/patterns.br"]);
-    expect(await repository.getPatterns(["LST"], ["NRW"])).toEqual({
-      LSTNRW: [[], ["CBG"], ["CBG", "ELY"]]
-    });
+    expect(londonToNorwich(repository, stops)).toEqual([[], ["CBG"], ["CBG", "ELY"]]);
   });
 
   it("says which file it could not fetch", async () => {
@@ -169,6 +128,13 @@ describe("loadTransferPatternsFromUrl", () => {
   });
 
 });
+
+/**
+ * The patterns the fixture holds, named again so the expectation can say what it means.
+ */
+function londonToNorwich(repository: TransferPatternRepository, stops: StopTable): string[][] {
+  return named(stops, repository.getPatterns(at(stops, "LST"), at(stops, "NRW")));
+}
 
 async function* chunks(...parts: (string | Uint8Array)[]): AsyncGenerator<Uint8Array> {
   for (const part of parts) {
