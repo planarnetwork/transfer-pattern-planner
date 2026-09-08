@@ -1,14 +1,17 @@
 import type { StopID } from "@gb-transit/gtfs-loader";
-import { CODE_WIDTH } from "./PatternFormat.js";
+import { type PatternTree, patternsBetween } from "./PatternTree.js";
 import type { TransferPatternIndex, TransferPatternRepository } from "./TransferPatternRepository.js";
 
 /**
- * Loads transfer patterns from an in memory index
+ * Loads transfer patterns from a tree held in memory.
+ *
+ * This is where the station codes a query asks in are exchanged for the stop indexes the tree works
+ * in, and where the stops of a pattern are named again on the way back out.
  */
 export class InMemoryTransferPatternRepository implements TransferPatternRepository {
 
   constructor(
-    private readonly patterns: PackedPatternIndex
+    private readonly patterns: PatternTree
   ) { }
 
   /**
@@ -18,16 +21,24 @@ export class InMemoryTransferPatternRepository implements TransferPatternReposit
     const result: TransferPatternIndex = {};
 
     for (const origin of origins) {
+      // a station the file holds no pattern for is one there is no journey through, which is how
+      // a pair with no patterns between them is treated too
+      const from = this.patterns.stopIndex.get(origin);
+
+      if (from === undefined) {
+        continue;
+      }
+
       for (const destination of destinations) {
-        // a pattern is held once, under its two ends in alphabetical order, so a journey the other
-        // way round is the same pattern read backwards
-        const reversed = origin > destination;
-        const packed = this.patterns.get(reversed ? destination + origin : origin + destination);
+        const to = this.patterns.stopIndex.get(destination);
 
-        if (packed) {
-          const stops = packed.map(pattern => unpack(pattern, reversed));
+        if (to === undefined) {
+          continue;
+        }
 
-          stops.sort((a, b) => a.length - b.length);
+        const stops = patternsBetween(this.patterns, from, to);
+
+        if (stops.length > 0) {
           result[origin + destination] = stops;
         }
       }
@@ -35,26 +46,4 @@ export class InMemoryTransferPatternRepository implements TransferPatternReposit
 
     return result;
   }
-}
-
-/**
- * The patterns between two stations, keyed by those stations in alphabetical order.
- *
- * Each pattern is the stations between the two ends, packed into a single string of fixed width
- * codes rather than an array. A national feed holds tens of millions of patterns, and an array per
- * pattern costs more to keep than the stations in it do.
- */
-export type PackedPatternIndex = Map<string, string[]>;
-
-/**
- * The stations of a packed pattern, in the direction they are being travelled in.
- */
-function unpack(pattern: string, reversed: boolean): StopID[] {
-  const stops: StopID[] = [];
-
-  for (let at = 0; at < pattern.length; at += CODE_WIDTH) {
-    stops.push(pattern.slice(at, at + CODE_WIDTH));
-  }
-
-  return reversed ? stops.reverse() : stops;
 }

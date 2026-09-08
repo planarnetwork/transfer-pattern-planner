@@ -13,6 +13,7 @@ export * from "./journey/Journey.js";
 export * from "./journey/JourneyFactory.js";
 export * from "./pattern/repository/InMemoryTransferPatternRepository.js";
 export * from "./pattern/repository/PatternFormat.js";
+export * from "./pattern/repository/PatternTree.js";
 export * from "./pattern/repository/TimetableLegRepository.js";
 export * from "./pattern/repository/TransferPatternLoader.js";
 export * from "./pattern/repository/TransferPatternRepository.js";

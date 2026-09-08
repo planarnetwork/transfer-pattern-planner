@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { InMemoryTransferPatternRepository } from "../../../../src/pattern/repository/InMemoryTransferPatternRepository.js";
 import { type PatternPath, readPatterns } from "../../../../src/pattern/repository/PatternFormat.js";
+import { readPatternTree } from "../../../../src/pattern/repository/PatternTree.js";
 import {
-  loadTransferPatterns, loadTransferPatternsFromUrl, readTransferPatterns, toLines
+  loadTransferPatterns, loadTransferPatternsFromUrl, toLines
 } from "../../../../src/pattern/repository/TransferPatternLoader.js";
 
 /**
@@ -46,28 +47,6 @@ describe("readPatterns", () => {
 
 });
 
-describe("readTransferPatterns", () => {
-
-  it("keys a pattern by its two ends and keeps the stations between them", async () => {
-    const index = await readTransferPatterns(LONDON_TO_NORWICH);
-
-    expect(index.get("LSTNRW")).toEqual(["CBGELY", "CBG", ""]);
-  });
-
-  it("reads a direct pattern as no stations between the ends", async () => {
-    const index = await readTransferPatterns(["0LSTNRW"]);
-
-    expect(index.get("LSTNRW")).toEqual([""]);
-  });
-
-  it("ignores a blank line, which a file ends with", async () => {
-    const index = await readTransferPatterns(["0LSTNRW", ""]);
-
-    expect(index.get("LSTNRW")).toEqual([""]);
-  });
-
-});
-
 describe("InMemoryTransferPatternRepository", () => {
 
   it("returns the stations between the ends, shortest pattern first", async () => {
@@ -102,7 +81,7 @@ describe("InMemoryTransferPatternRepository", () => {
   });
 
   async function load(lines: string[]) {
-    return new InMemoryTransferPatternRepository(await readTransferPatterns(lines));
+    return new InMemoryTransferPatternRepository(await readPatternTree(lines));
   }
 
 });

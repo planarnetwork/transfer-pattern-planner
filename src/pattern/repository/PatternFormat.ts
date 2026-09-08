@@ -103,6 +103,13 @@ function sharedStations(line: string, previous: string): number {
 }
 
 /**
+ * How many leading stations a line takes from the line before it.
+ */
+export function sharedStops(line: string): number {
+  return line.charCodeAt(0) - NONE_SHARED;
+}
+
+/**
  * Read back what frontCode wrote, as the stations of each pattern.
  *
  * It takes the lines a few at a time rather than all at once, since a national feed holds tens of
@@ -118,7 +125,7 @@ export async function* readPatterns(
       continue;
     }
 
-    const shared = line.charCodeAt(0) - NONE_SHARED;
+    const shared = sharedStops(line);
     const path = previous.slice(0, shared);
 
     for (let at = 1; at < line.length; at += CODE_WIDTH) {

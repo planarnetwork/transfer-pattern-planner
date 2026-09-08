@@ -1,6 +1,6 @@
 import { type GTFSSource, toChunks } from "@gb-transit/gtfs-loader";
-import { InMemoryTransferPatternRepository, type PackedPatternIndex } from "./InMemoryTransferPatternRepository.js";
-import { readPatterns } from "./PatternFormat.js";
+import { InMemoryTransferPatternRepository } from "./InMemoryTransferPatternRepository.js";
+import { readPatternTree } from "./PatternTree.js";
 
 /**
  * Anything that can give the bytes of a transfer pattern file.
@@ -41,7 +41,7 @@ export async function loadTransferPatterns(
 ): Promise<InMemoryTransferPatternRepository> {
   const compressed = options.compressed ?? !alreadyDecoded(source);
 
-  return new InMemoryTransferPatternRepository(await readTransferPatterns(toLines(bytes(source, compressed))));
+  return new InMemoryTransferPatternRepository(await readPatternTree(toLines(bytes(source, compressed))));
 }
 
 /**
@@ -65,33 +65,6 @@ export async function loadTransferPatternsFromUrl(
   }
 
   return loadTransferPatterns(response, options);
-}
-
-/**
- * Index the patterns by the two stations at their ends, keeping only the stations between them.
- *
- * The lines are taken a few at a time rather than all at once: a national feed holds tens of
- * millions of them, and there is no point holding the text as well as the index built from it.
- */
-export async function readTransferPatterns(
-  lines: AsyncIterable<string> | Iterable<string>
-): Promise<PackedPatternIndex> {
-  const index: PackedPatternIndex = new Map();
-
-  for await (const path of readPatterns(lines)) {
-    const key = path[0] + path[path.length - 1];
-    const between = path.slice(1, -1).join("");
-    const existing = index.get(key);
-
-    if (existing) {
-      existing.push(between);
-    }
-    else {
-      index.set(key, [between]);
-    }
-  }
-
-  return index;
 }
 
 /**
