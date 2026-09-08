@@ -1,4 +1,5 @@
 import type { StopID } from "@gb-transit/gtfs-loader";
+import { checkCodeWidths } from "./PatternFormat.js";
 import type { PatternProvider } from "./PatternProvider.js";
 
 export interface UrlPatternOptions {
@@ -19,9 +20,17 @@ export class UrlPatternProvider implements PatternProvider {
   constructor(
     private readonly base: string | URL,
     private readonly options: UrlPatternOptions = {}
-  ) {}
+  ) {
+    // without one the last segment is a filename rather than a directory, and is quietly replaced
+    if (!String(base).endsWith("/")) {
+      throw new Error(`The patterns are beneath ${base}, so it needs to end with a "/"`);
+    }
+  }
 
   public async get(station: StopID): Promise<Uint8Array | undefined> {
+    // the station names the file, so a code that parsed as a URL of its own would fetch that host
+    checkCodeWidths([station]);
+
     const get = this.options.fetch ?? fetch;
     const url = new URL(station + (this.options.extension ?? ".br"), this.base);
     const response = await get(String(url), { signal: this.options.signal, headers: this.options.headers });

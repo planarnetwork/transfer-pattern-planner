@@ -183,7 +183,8 @@ const {
 
 const stops = new StopTable();
 const patterns = new LazyTransferTreeRepository(new DirectoryPatternProvider("./stations"), stops);
-const query = new DepartAfterQuery(await loadGtfs(fs.createReadStream("gtfs.zip"), stops), patterns);
+const gtfs = await loadGtfs(fs.createReadStream("gtfs.zip"), stops);
+const query = new DepartAfterQuery(gtfs, patterns);
 
 const journeys = await query.plan(["NRW"], ["LST"], new Date(), 9 * 60 * 60);
 ```
@@ -215,8 +216,8 @@ which the feed and the patterns are both read against so that they speak of a st
 The two files are still read at the same time - whichever reaches a station first numbers it.
 
 Patterns can come from somewhere other than a file: `TransferPatternRepository` is a single method
-returning the patterns between two stations, which `TransferTreeRepository` - what a file is read into -
-implements.
+returning the patterns between two stations, which `TransferTreeRepository` - what a file is read
+into - implements.
 
 ### In the browser
 
@@ -272,8 +273,9 @@ Three things are easy to confuse, so they are named apart:
 stations that follow, three characters each. `PatternFormat`, `FrontCoder` and `PatternLoader` are
 all about the file.
 
-**TransferTreeRepository** is the in memory structure a file is read into. Every pattern in the feed, holding
-each station it shares with another pattern once, and answering "what patterns run between these
+**TransferTreeRepository** is the in memory structure a file is read into. Every pattern in the
+feed, holding each station it shares with another pattern once, and answering "what patterns run
+between these
 two stations". A `StationTransferTree` is the part of it belonging to one origin. It is a trie
 rather than a tree in the strict sense - the sharing is on the stations a pattern begins with - and
 [the paper](https://ad.informatik.uni-freiburg.de/files/transferpatterns.pdf) calls the equivalent

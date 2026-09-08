@@ -17,11 +17,14 @@ async function run(patterns: string, directory: string) {
   // only the lines are wanted here, so the table this would number stations in goes unused
   const lines = new PatternLoader(new StopTable()).lines(fs.createReadStream(patterns));
 
-  const { stations, bytes } = await new StationPatternFiles(workDir, new PatternReader()).write(lines, directory);
+  try {
+    const { stations, bytes } = await new StationPatternFiles(workDir, new PatternReader()).write(lines, directory);
 
-  await fs.promises.rm(workDir, { recursive: true, force: true });
-
-  console.log(`${stations.toLocaleString()} stations, ${(bytes / 1024 / 1024).toFixed(1)}MB in ${directory}`);
+    console.log(`${stations.toLocaleString()} stations, ${(bytes / 1024 / 1024).toFixed(1)}MB in ${directory}`);
+  }
+  finally {
+    await fs.promises.rm(workDir, { recursive: true, force: true });
+  }
 }
 
 if (process.argv[2] && process.argv[3]) {

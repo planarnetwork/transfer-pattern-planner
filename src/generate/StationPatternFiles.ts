@@ -2,13 +2,13 @@ import { once } from "node:events";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as readline from "node:readline";
-import type { Writable } from "node:stream";
 import * as zlib from "node:zlib";
 import { FrontCoder } from "../pattern/format/FrontCoder.js";
+import { BROTLI_QUALITY, workFileName } from "../pattern/format/PatternFormat.js";
 import type { PatternReader } from "../pattern/format/PatternReader.js";
 
-/** Where brotli stops being free, as the merged file uses too */
-const QUALITY = 5;
+/** What a station's file is called, after the station */
+const EXTENSION = ".br";
 
 /**
  * Writes a file per station, holding every pattern that touches it.
@@ -40,7 +40,23 @@ export class StationPatternFiles {
       await fs.promises.rm(this.stationFile(station), { force: true });
     }
 
+    await this.removeWithdrawn(directory, stations);
+
     return { stations: stations.length, bytes };
+  }
+
+  /**
+   * Take out the stations this run did not write. A directory holding the release before it would
+   * otherwise keep serving a station the feed has since dropped, as though it were still current.
+   */
+  private async removeWithdrawn(directory: string, stations: string[]): Promise<void> {
+    const written = new Set(stations.map(station => `${station}${EXTENSION}`));
+
+    for (const file of await fs.promises.readdir(directory)) {
+      if (file.endsWith(EXTENSION) && !written.has(file)) {
+        await fs.promises.rm(path.join(directory, file), { force: true });
+      }
+    }
   }
 
   /**
@@ -95,22 +111,16 @@ export class StationPatternFiles {
     const coder = new FrontCoder();
     const coded = [...seen].sort().map(line => coder.code(line)).join("\n");
     const compressed = zlib.brotliCompressSync(Buffer.from(`${coded}\n`), {
-      params: { [zlib.constants.BROTLI_PARAM_QUALITY]: QUALITY }
+      params: { [zlib.constants.BROTLI_PARAM_QUALITY]: BROTLI_QUALITY }
     });
 
-    await fs.promises.writeFile(path.join(directory, `${station}.br`), compressed);
+    await fs.promises.writeFile(path.join(directory, `${station}${EXTENSION}`), compressed);
 
     return compressed.length;
   }
 
   private stationFile(station: string): string {
-    let name = 0;
-
-    for (let i = 0; i < station.length; i++) {
-      name = (name << 8) | station.charCodeAt(i);
-    }
-
-    return path.join(this.workDir, `station-${name}.txt`);
+    return path.join(this.workDir, `station-${workFileName(station)}.txt`);
   }
 
 }

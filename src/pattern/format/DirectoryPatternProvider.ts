@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { StopID } from "@gb-transit/gtfs-loader";
+import { checkCodeWidths } from "./PatternFormat.js";
 import type { PatternProvider } from "./PatternProvider.js";
 
 /**
@@ -14,6 +15,9 @@ export class DirectoryPatternProvider implements PatternProvider {
   ) {}
 
   public async get(station: StopID): Promise<Uint8Array | undefined> {
+    // the station names the file, so anything but a station code would name another one
+    checkCodeWidths([station]);
+
     try {
       return await fs.promises.readFile(path.join(this.directory, station + this.extension));
     }

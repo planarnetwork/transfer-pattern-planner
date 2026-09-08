@@ -1,6 +1,6 @@
 {
   "name": "transfer-pattern-planner",
-  "version": "2.3.0",
+  "version": "3.0.0",
   "description": "Transfer Pattern Planning Algorithm",
   "type": "module",
   "main": "./dist/cjs/index.js",

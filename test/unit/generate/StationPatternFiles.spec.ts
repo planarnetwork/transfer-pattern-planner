@@ -85,6 +85,25 @@ describe("StationPatternFiles", () => {
     expect(bytes).toBeGreaterThan(0);
   });
 
+  it("takes out a station the feed no longer serves", async () => {
+    const out = temp();
+
+    // as though a release before this one had written it
+    fs.writeFileSync(path.join(out, "EDB.br"), "stale");
+    await new StationPatternFiles(temp(), new PatternReader()).write(["0LSTCBGNRW"], out);
+
+    expect(fs.readdirSync(out).sort()).toEqual(["LST.br", "NRW.br"]);
+  });
+
+  it("leaves anything that is not a station file alone", async () => {
+    const out = temp();
+
+    fs.writeFileSync(path.join(out, "README.md"), "read me");
+    await new StationPatternFiles(temp(), new PatternReader()).write(["0LSTCBGNRW"], out);
+
+    expect(fs.readdirSync(out).sort()).toEqual(["LST.br", "NRW.br", "README.md"]);
+  });
+
   it("clears up after itself", async () => {
     const work = temp();
 

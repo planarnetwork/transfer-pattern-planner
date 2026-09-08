@@ -95,4 +95,53 @@ describe("LazyTransferTreeRepository", () => {
     expect(p.asked).toEqual(["LST", "NRW", "EDB", "LST"]);
   });
 
+  it("keeps a station that is asked for again", async () => {
+    const stops = new StopTable();
+    const p = provider({ ...FILES, EDB: ["0EDBGLQ"] });
+    const patterns = new LazyTransferTreeRepository(p, stops, 2);
+
+    await patterns.prepare([stops.intern("LST")]);
+    await patterns.prepare([stops.intern("NRW")]);
+    await patterns.prepare([stops.intern("LST")]);   // asked for again, so NRW is now the oldest
+    await patterns.prepare([stops.intern("EDB")]);
+    await patterns.prepare([stops.intern("LST")]);
+
+    expect(p.asked).toEqual(["LST", "NRW", "EDB"]);
+  });
+
+  it("does not drop a station the query being prepared is asking for", async () => {
+    const stops = new StopTable();
+    const patterns = new LazyTransferTreeRepository(provider({ ...FILES, EDB: ["0EDBGLQ"] }), stops, 2);
+    const [lst, nrw, edb] = ["LST", "NRW", "EDB"].map(code => stops.intern(code));
+
+    await patterns.prepare([lst]);
+    await patterns.prepare([nrw]);
+    await patterns.prepare([lst, edb]);
+
+    expect(() => patterns.getPatterns(lst, edb)).not.toThrow();
+  });
+
+  it("holds a group larger than the limit for as long as the query needs it", async () => {
+    const stops = new StopTable();
+    const patterns = new LazyTransferTreeRepository(provider({ ...FILES, EDB: ["0EDBGLQ"] }), stops, 1);
+    const wanted = ["LST", "NRW", "EDB"].map(code => stops.intern(code));
+
+    await patterns.prepare(wanted);
+
+    for (const origin of wanted) {
+      expect(() => patterns.getPatterns(origin, stops.intern("GLQ"))).not.toThrow();
+    }
+  });
+
+  it("reads a station once when two queries ask for it at the same time", async () => {
+    const stops = new StopTable();
+    const p = provider();
+    const patterns = new LazyTransferTreeRepository(p, stops);
+    const lst = stops.intern("LST");
+
+    await Promise.all([patterns.prepare([lst]), patterns.prepare([lst])]);
+
+    expect(p.asked).toEqual(["LST"]);
+  });
+
 });

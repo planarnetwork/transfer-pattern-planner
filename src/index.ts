@@ -16,6 +16,7 @@ export * from "./pattern/format/FrontCoder.js";
 export * from "./pattern/format/DirectoryPatternProvider.js";
 export * from "./pattern/format/PatternLoader.js";
 export * from "./pattern/format/PatternProvider.js";
+export * from "./pattern/format/PatternReader.js";
 export * from "./pattern/format/UrlPatternProvider.js";
 export * from "./pattern/format/PatternFormat.js";
 export * from "./pattern/repository/TransferTreeNodes.js";

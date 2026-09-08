@@ -27,3 +27,23 @@ export function checkCodeWidths(stopIds: StopID[]): void {
     );
   }
 }
+
+/**
+ * How hard a written file is compressed. Five is where brotli stops being free: it holds a few
+ * hundred megabytes a second, where the levels above it manage single figures.
+ */
+export const BROTLI_QUALITY = 5;
+
+/**
+ * A name for the working file of a station or a bucket, from its character codes rather than from
+ * itself, so a code that is not a filename stays one and two of them never share a file.
+ */
+export function workFileName(key: string): number {
+  let name = 0;
+
+  for (let i = 0; i < key.length; i++) {
+    name = (name << 8) | key.charCodeAt(i);
+  }
+
+  return name;
+}

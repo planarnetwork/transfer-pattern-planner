@@ -38,7 +38,7 @@ describe("DirectoryPatternProvider", () => {
     expect(await new DirectoryPatternProvider(directory({})).get("ZZZ")).toBe(undefined);
   });
 
-  it("says so when the directory is not there at all", async () => {
+  it("gives nothing when the directory is not there at all", async () => {
     expect(await new DirectoryPatternProvider("/no/such/place").get("LST")).toBe(undefined);
   });
 
@@ -82,6 +82,28 @@ describe("UrlPatternProvider", () => {
     await provider.get("LST");
 
     expect(asked).toEqual(["https://example.com/p/LST.gz"]);
+  });
+
+});
+
+describe("what a provider will take for a station", () => {
+
+  it("refuses a directory station that would climb out of it", async () => {
+    await expect(new DirectoryPatternProvider("/data/stations").get("../../etc/passwd"))
+      .rejects.toThrow(/3 character station codes/);
+  });
+
+  it("refuses a fetched station that would name another host", async () => {
+    const provider = new UrlPatternProvider("https://example.com/patterns/", {
+      fetch: async () => new Response("")
+    });
+
+    await expect(provider.get("https://evil.example/x")).rejects.toThrow(/3 character station codes/);
+  });
+
+  it("refuses a base that would drop its last segment", () => {
+    expect(() => new UrlPatternProvider("https://example.com/patterns"))
+      .toThrow(/needs to end with a "\/"/);
   });
 
 });
