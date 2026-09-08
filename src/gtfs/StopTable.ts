@@ -65,11 +65,4 @@ export class StopTable {
     return this.codes[index];
   }
 
-  /**
-   * Every station numbered so far, in the order they were met
-   */
-  public get names(): readonly StopID[] {
-    return this.codes;
-  }
-
 }

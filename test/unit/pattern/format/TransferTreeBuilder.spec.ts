@@ -46,10 +46,10 @@ describe("TransferTreeBuilder", () => {
     expect(await between(LONDON_TO_NORWICH, "LST", "NRW")).toContainEqual([]);
   });
 
-  it("numbers every station it meets in the table it was given", async () => {
+  it("numbers every station it meets in the table it was given, as it meets it", async () => {
     const [, stops] = await read(LONDON_TO_NORWICH);
 
-    expect(stops.names).toEqual(["LST", "CBG", "ELY", "NRW"]);
+    expect(["LST", "CBG", "ELY", "NRW"].map(code => stops.indexOf(code))).toEqual([0, 1, 2, 3]);
   });
 
   it("finds a station the feed numbered first already numbered", async () => {
@@ -58,7 +58,9 @@ describe("TransferTreeBuilder", () => {
     const stops = stopsFor("NRW", "LST");
     const tree = await new TransferTreeBuilder(stops).read(["0LSTNRW"]);
 
-    expect(stops.names).toEqual(["NRW", "LST"]);
+    // the numbering the table already had, not one of the reader's own
+    expect(stops.indexOf("NRW")).toBe(0);
+    expect(stops.indexOf("LST")).toBe(1);
     expect(tree.getPatterns(at(stops, "LST"), at(stops, "NRW"))).toEqual([[]]);
   });
 
