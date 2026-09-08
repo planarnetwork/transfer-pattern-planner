@@ -13,7 +13,7 @@ const NO_ORIGIN = -1;
  * The shared count at the front of a line already names the node it hangs from, so nothing is
  * rebuilt on the way in: no path per line, and no string per pattern.
  */
-export class PatternTreeReader {
+export class DagBuilder {
 
   private readonly nodes = new PatternNodes();
   private readonly from: (StationDag | undefined)[] = [];
@@ -90,7 +90,7 @@ export class PatternTreeReader {
       );
     }
 
-    this.from[this.origin] = StationDag.of(this.open);
+    this.from[this.origin] = new StationDag(this.open);
     this.open = new Map();
   }
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { StopTable } from "../../../../src/gtfs/StopTable.js";
 import { NO_NODE } from "../../../../src/pattern/repository/PatternNodes.js";
 import type { DagRepository } from "../../../../src/pattern/repository/DagRepository.js";
-import { PatternTreeReader } from "../../../../src/pattern/repository/PatternTreeReader.js";
+import { DagBuilder } from "../../../../src/pattern/repository/DagBuilder.js";
 import { at, named, stopsFor } from "../../util.js";
 
 /**
@@ -18,7 +18,7 @@ const LONDON_TO_NORWICH = ["0LSTCBGELYNRW", "2NRW", "1NRW"];
 async function read(lines: string[]): Promise<[DagRepository, StopTable]> {
   const stops = new StopTable();
 
-  return [await new PatternTreeReader(stops).read(lines), stops];
+  return [await new DagBuilder(stops).read(lines), stops];
 }
 
 /** A pattern read back as the stations it calls at, ends and all */
@@ -32,7 +32,7 @@ function climb(tree: DagRepository, stops: StopTable, node: number): string[] {
   return path.reverse();
 }
 
-describe("PatternTreeReader", () => {
+describe("DagBuilder", () => {
 
   it("holds a stop two patterns share once", async () => {
     const [tree] = await read(LONDON_TO_NORWICH);
@@ -65,7 +65,7 @@ describe("PatternTreeReader", () => {
     // the feed and the patterns are read at the same time against one table, so whichever reaches
     // a station first numbers it and the other has to agree
     const stops = stopsFor("NRW", "LST");
-    const tree = await new PatternTreeReader(stops).read(["0LSTNRW"]);
+    const tree = await new DagBuilder(stops).read(["0LSTNRW"]);
 
     expect(stops.names).toEqual(["NRW", "LST"]);
     expect(tree.stop[0]).toBe(at(stops, "LST"));
@@ -102,7 +102,7 @@ describe("PatternTreeReader", () => {
 
   it("refuses a file that returns to a station it had left", async () => {
     // only the origin being read is held, so going back to one would drop what was found first
-    const failing = new PatternTreeReader(new StopTable()).read(["0LSTNRW", "0EDBGLQ", "0LSTCBGNRW"]);
+    const failing = new DagBuilder(new StopTable()).read(["0LSTNRW", "0EDBGLQ", "0LSTCBGNRW"]);
 
     await expect(failing).rejects.toThrow(/returns to a station it had already left/);
   });

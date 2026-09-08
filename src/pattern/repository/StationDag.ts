@@ -16,12 +16,10 @@ const NOT_FOUND = -1;
  */
 export class StationDag {
 
-  constructor(
-    private readonly data: Int32Array
-  ) {}
+  private readonly data: Int32Array;
 
-  /** The destinations go in order so they can be searched */
-  public static of(patterns: Map<StopIdx, number[]>): StationDag {
+  /** The destinations are put in order so they can be searched */
+  constructor(patterns: Map<StopIdx, number[]>) {
     const destinations = [...patterns.keys()].sort((a, b) => a - b);
     const count = destinations.length;
     const nodes = destinations.map(destination => patterns.get(destination) as number[]);
@@ -43,7 +41,7 @@ export class StationDag {
 
     data[1 + count * 2] = at;
 
-    return new StationDag(data);
+    this.data = data;
   }
 
   /**

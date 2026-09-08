@@ -22,7 +22,7 @@ function londonToNorwich(): DagRepository {
   return new DagRepository(
     Uint16Array.from([LST, CBG, ELY, NRW, NRW, NRW]),
     Int32Array.from([NO_NODE, 0, 1, 2, 1, 0]),
-    [StationDag.of(new Map([[NRW, [3, 4, 5]]]))]
+    [new StationDag(new Map([[NRW, [3, 4, 5]]]))]
   );
 }
 
@@ -48,7 +48,7 @@ describe("DagRepository", () => {
     const tree = new DagRepository(
       Uint16Array.from([LST, NRW]),
       Int32Array.from([NO_NODE, 0]),
-      [StationDag.of(new Map([[NRW, [1]]]))]
+      [new StationDag(new Map([[NRW, [1]]]))]
     );
 
     expect(tree.getPatterns(LST, NRW)).toEqual([[]]);

@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import { loadGtfs } from "./gtfs/GtfsLoader.js";
-import { loadTransferPatterns } from "./pattern/repository/TransferPatternLoader.js";
+import { PatternLoader } from "./pattern/repository/PatternLoader.js";
 import { DepartAfterQuery } from "./query/DepartAfterQuery.js";
 import { StopTable } from "./gtfs/StopTable.js";
 
@@ -21,7 +21,7 @@ export class Container {
     const stops = new StopTable();
     const [gtfs, patterns] = await Promise.all([
       loadGtfs(fs.createReadStream(process.env.GTFS ?? "gtfs.zip"), stops),
-      loadTransferPatterns(fs.createReadStream(process.env.TRANSFER_PATTERNS ?? "transfer-patterns.br"), { stops })
+      new PatternLoader(stops).load(fs.createReadStream(process.env.TRANSFER_PATTERNS ?? "transfer-patterns.br"))
     ]);
     console.timeEnd("initial load");
 

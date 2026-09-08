@@ -80,7 +80,7 @@ line above and what follows it:
 ```
 
 The file is brotli compressed. A national feed comes to about 33MB for 34 million patterns, which
-`loadTransferPatterns` reads into an index of the stations between each pair of ends.
+`PatternLoader` reads into a dag of the stations between each pair of ends.
 
 Because a station is three characters, this needs a feed whose `stop_code` is one - a CRS code, for
 the GB rail feeds this is built for.
@@ -117,13 +117,13 @@ The container is a convenience. A feed and the patterns for it are all a query n
 
 ```javascript
 const fs = require("fs");
-const { DepartAfterQuery, loadGtfs, loadTransferPatterns, StopTable } = require("transfer-pattern-planner");
+const { DepartAfterQuery, loadGtfs, PatternLoader, StopTable } = require("transfer-pattern-planner");
 
 // one table of stations for the two of them, added to by whichever reaches a station first
 const stops = new StopTable();
 const [gtfs, patterns] = await Promise.all([
   loadGtfs(fs.createReadStream("gtfs.zip"), stops),
-  loadTransferPatterns(fs.createReadStream("transfer-patterns.br"), { stops })
+  new PatternLoader(stops).load(fs.createReadStream("transfer-patterns.br"))
 ]);
 
 const query = new DepartAfterQuery(gtfs, patterns);
@@ -152,12 +152,12 @@ downloads overlap, each parsed as it arrives rather than after it has all been c
 
 ```javascript
 import { loadGTFSFromUrl } from "@gb-transit/gtfs-loader";
-import { loadTransferPatternsFromUrl, toGtfsData, DepartAfterQuery, StopTable } from "transfer-pattern-planner";
+import { PatternLoader, toGtfsData, DepartAfterQuery, StopTable } from "transfer-pattern-planner";
 
 const stops = new StopTable();
 const [gtfs, patterns] = await Promise.all([
   loadGTFSFromUrl("/gtfs.zip").then(feed => toGtfsData(feed, stops)),
-  loadTransferPatternsFromUrl("/transfer-patterns.br", { stops })
+  new PatternLoader(stops).loadFromUrl("/transfer-patterns.br")
 ]);
 
 const query = new DepartAfterQuery(gtfs, patterns);
@@ -172,8 +172,8 @@ it with `Content-Encoding: br` can, and the browser will have decoded the body b
 that is noticed from the header rather than decompressing what is already plain. Pass
 `{ compressed: false }` to say so for a file that arrives decompressed some other way.
 
-`loadTransferPatterns` takes the same sources the feed loader does - a `Response`, a
-`ReadableStream`, a `Blob`, the bytes, or a node stream.
+`PatternLoader` takes the same sources the feed loader does - a `Response`, a `ReadableStream`, a
+`Blob`, the bytes, or a node stream.
 
 ## Contributing
 

@@ -4,7 +4,7 @@ import * as path from "node:path";
 import * as zlib from "node:zlib";
 import { afterEach, describe, expect, it } from "vitest";
 import { TransferPatternMerge } from "../../../src/generate/TransferPatternMerge.js";
-import { PatternReader } from "../../../src/pattern/format/PatternReader.js";
+import { CODE_WIDTH, sharedStops } from "../../../src/pattern/format/PatternFormat.js";
 
 const made: string[] = [];
 
@@ -24,13 +24,29 @@ function part(dir: string, name: string, lines: string[]): string {
   return file;
 }
 
-async function paths(output: string): Promise<string[][]> {
-  const text = zlib.brotliDecompressSync(await fs.promises.readFile(output)).toString();
-
+/**
+ * The patterns of the merged file, in the order it wrote them, which is what the merge is for.
+ * Spelled out here rather than read by the loader, so the file is checked and not the reader.
+ */
+function paths(output: string): string[][] {
+  const text = zlib.brotliDecompressSync(fs.readFileSync(output)).toString();
   const paths: string[][] = [];
 
-  for await (const path of new PatternReader().read(text.split("\n"))) {
+  let previous: string[] = [];
+
+  for (const line of text.split("\n")) {
+    if (line === "") {
+      continue;
+    }
+
+    const path = previous.slice(0, sharedStops(line));
+
+    for (let at = 1; at < line.length; at += CODE_WIDTH) {
+      path.push(line.slice(at, at + CODE_WIDTH));
+    }
+
     paths.push(path);
+    previous = path;
   }
 
   return paths;
@@ -53,7 +69,7 @@ describe("TransferPatternMerge", () => {
     const { patterns } = await new TransferPatternMerge(dir).merge(parts, output);
 
     expect(patterns).toBe(5);
-    expect(await paths(output)).toEqual([
+    expect(paths(output)).toEqual([
       ["BHM", "EDB"],
       ["BHM", "NCL", "EDB"],
       ["NRW", "CBG", "BFR", "LST"],
@@ -73,7 +89,7 @@ describe("TransferPatternMerge", () => {
     const { patterns } = await new TransferPatternMerge(dir).merge(parts, output);
 
     expect(patterns).toBe(3);
-    expect(await paths(output)).toEqual([
+    expect(paths(output)).toEqual([
       ["BHM", "EUS", "NRW"],
       ["BHM", "LST", "NRW"],
       ["BHM", "NRW"]
@@ -96,7 +112,7 @@ describe("TransferPatternMerge", () => {
     const { patterns } = await new TransferPatternMerge(dir).merge([part(dir, "a.gz", [])], output);
 
     expect(patterns).toBe(0);
-    expect(await paths(output)).toEqual([]);
+    expect(paths(output)).toEqual([]);
   });
 
 });

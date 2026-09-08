@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { StationDag } from "../../../../src/pattern/repository/StationDag.js";
 
 function from(patterns: Record<number, number[]>): StationDag {
-  return StationDag.of(new Map(Object.entries(patterns).map(([stop, nodes]) => [Number(stop), nodes])));
+  return new StationDag(new Map(Object.entries(patterns).map(([stop, nodes]) => [Number(stop), nodes])));
 }
 
 function endsAt(patterns: StationDag, destination: number): number[] | undefined {
