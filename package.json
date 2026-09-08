@@ -2,6 +2,7 @@
   "name": "transfer-pattern-planner",
   "version": "2.0.0",
   "description": "Transfer Pattern Planning Algorithm",
+  "type": "module",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/cjs/index.d.ts",
@@ -47,6 +48,7 @@
     "build": "rm -rf ./dist/ && tsc -p tsconfig.cjs.json && tsc -p tsconfig.esm.json && cp cjs-package.json dist/cjs/package.json && cp esm-package.json dist/esm/package.json",
     "prepublishOnly": "npm run build",
     "start": "tsx src/cli/plan.ts",
+    "patterns": "NODE_OPTIONS='--max-old-space-size=6000' tsx src/cli/transfer-patterns.ts",
     "perf": "NODE_OPTIONS=--max-old-space-size=4000 tsx test/performance.ts"
   },
   "keywords": [
@@ -64,6 +66,9 @@
   "devDependencies": {
     "@biomejs/biome": "2.5.12",
     "@types/node": "26.5.0",
+    "@types/progress": "2.0.7",
+    "progress": "2.0.3",
+    "raptor-journey-planner": "^5.0.1",
     "tsx": "^4.23.13",
     "typescript": "7.0.2",
     "vitest": "^5.0.0"

@@ -1,75 +1,108 @@
 import type { GTFSFeed, Stop, StopID } from "@gb-transit/gtfs-loader";
 import { describe, expect, it } from "vitest";
+import type { GtfsData } from "../../../src/gtfs/GtfsLoader.js";
 import { toGtfsData } from "../../../src/gtfs/GtfsLoader.js";
+import { StopTable } from "../../../src/gtfs/StopTable.js";
 import { st, trip } from "../util.js";
+
+/**
+ * The index is kept in the terms the planner works in, so a spec asks it in station codes and gets
+ * codes back rather than reading the numbers it holds them under.
+ */
+function destinationsFrom(gtfs: GtfsData, stops: StopTable, origin: StopID): StopID[] | undefined {
+  const byDestination = gtfs.trips[stops.indexOf(origin)];
+
+  return byDestination && [...byDestination.keys()].map(stop => stops.nameOf(stop));
+}
+
+function tripsBetween(gtfs: GtfsData, stops: StopTable, origin: StopID, destination: StopID) {
+  return gtfs.trips[stops.indexOf(origin)]?.get(stops.indexOf(destination));
+}
+
+function transfersBetween(gtfs: GtfsData, stops: StopTable, origin: StopID, destination: StopID) {
+  return gtfs.transfers[stops.indexOf(origin)]?.get(stops.indexOf(destination));
+}
+
+function stations(gtfs: GtfsData, stops: StopTable, origin: StopID, destination: StopID): StopID[] {
+  const [trip] = tripsBetween(gtfs, stops, origin, destination) ?? [];
+
+  return trip.stations.map(stop => stops.nameOf(stop));
+}
 
 describe("toGtfsData", () => {
 
   it("indexes trips between the stations their platforms belong to", () => {
+    const stops = new StopTable();
     const gtfs = toGtfsData(feed({
       trips: [trip(st("NRW1", 1000), st("DIS2", 1100), st("LST8", 1200))]
-    }));
+    }), stops);
 
-    expect(Object.keys(gtfs.trips.NRW)).toEqual(["DIS", "LST"]);
-    expect(Object.keys(gtfs.trips.DIS)).toEqual(["LST"]);
-    expect(gtfs.trips.NRW.LST.length).toBe(1);
+    expect(destinationsFrom(gtfs, stops, "NRW")).toEqual(["DIS", "LST"]);
+    expect(destinationsFrom(gtfs, stops, "DIS")).toEqual(["LST"]);
+    expect(tripsBetween(gtfs, stops, "NRW", "LST")?.length).toBe(1);
     expect(gtfs.stations.get("NRW1")).toBe("NRW");
   });
 
   it("keeps the feed's own stop times, so a leg still says which platform it uses", () => {
+    const stops = new StopTable();
     const gtfs = toGtfsData(feed({
       trips: [trip(st("NRW1", 1000), st("LST8", 1200))]
-    }));
+    }), stops);
 
-    expect(gtfs.trips.NRW.LST[0].calls.map(c => c.stop)).toEqual(["NRW1", "LST8"]);
-    expect(gtfs.trips.NRW.LST[0].stations).toEqual(["NRW", "LST"]);
+    expect(tripsBetween(gtfs, stops, "NRW", "LST")?.[0].calls.map(c => c.stop)).toEqual(["NRW1", "LST8"]);
+    expect(stations(gtfs, stops, "NRW", "LST")).toEqual(["NRW", "LST"]);
   });
 
   it("does not index a passing point, which a passenger cannot use", () => {
     const passing = { ...st("DIS2", 1100), pickUp: false, dropOff: false };
 
+    const stops = new StopTable();
     const gtfs = toGtfsData(feed({
       trips: [trip(st("NRW1", 1000), passing, st("LST8", 1200))]
-    }));
+    }), stops);
 
-    expect(gtfs.trips.DIS).toBe(undefined);
-    expect(gtfs.trips.NRW.LST.length).toBe(1);
+    expect(destinationsFrom(gtfs, stops, "DIS")).toBe(undefined);
+    expect(tripsBetween(gtfs, stops, "NRW", "LST")?.length).toBe(1);
   });
 
   it("does not index a call it can only be boarded at as a destination", () => {
     const setDownOnly = { ...st("LST8", 1200), pickUp: true, dropOff: false };
 
+    const stops = new StopTable();
     const gtfs = toGtfsData(feed({
       trips: [trip(st("NRW1", 1000), setDownOnly)]
-    }));
+    }), stops);
 
-    expect(gtfs.trips.NRW).toBe(undefined);
+    expect(destinationsFrom(gtfs, stops, "NRW")).toBe(undefined);
   });
 
   it("does not index a leg between two platforms of one station", () => {
+    const stops = new StopTable();
     const gtfs = toGtfsData(feed({
       trips: [trip(st("NRW1", 1000), st("NRW2", 1005), st("LST8", 1200))]
-    }));
+    }), stops);
 
-    expect(gtfs.trips.NRW.NRW).toBe(undefined);
-    expect(Object.keys(gtfs.trips.NRW)).toEqual(["LST"]);
+    expect(tripsBetween(gtfs, stops, "NRW", "NRW")).toBe(undefined);
+    expect(destinationsFrom(gtfs, stops, "NRW")).toEqual(["LST"]);
   });
 
   it("adds the trip a passenger stays on across a coupling", () => {
     const front = { ...trip(st("NRW1", 1000), st("DIS2", 1100)), tripId: "front" };
     const rear = { ...trip(st("DIS2", 1130), st("LST8", 1230)), tripId: "rear" };
 
+    const stops = new StopTable();
     const gtfs = toGtfsData(feed({
       trips: [front, rear],
       links: [{ fromTripId: "front", toTripId: "rear", fromStop: "DIS2", toStop: "DIS2" }]
-    }));
+    }), stops);
 
     // NRW to LST is only reachable on the through trip, the two portions alone never call at both
-    expect(gtfs.trips.NRW.LST.length).toBe(1);
-    expect(gtfs.trips.NRW.LST[0].trip.tripId).toBe("front_rear");
+    expect(tripsBetween(gtfs, stops, "NRW", "LST")?.length).toBe(1);
+    expect(tripsBetween(gtfs, stops, "NRW", "LST")?.[0].trip.tripId).toBe("front_rear");
   });
 
   it("indexes footpaths between stations and drops those within one", () => {
+    const stops = new StopTable();
     const gtfs = toGtfsData(feed({
       transfers: {
         NRW1: [
@@ -77,17 +110,18 @@ describe("toGtfsData", () => {
           transfer("NRW1", "DIS2", 600)
         ]
       }
-    }));
+    }), stops);
 
-    expect(gtfs.transfers.NRW.NRW).toBe(undefined);
-    expect(gtfs.transfers.NRW.DIS.length).toBe(1);
-    expect(gtfs.transfers.NRW.DIS[0].duration).toBe(600);
+    expect(transfersBetween(gtfs, stops, "NRW", "NRW")).toBe(undefined);
+    expect(transfersBetween(gtfs, stops, "NRW", "DIS")?.length).toBe(1);
+    expect(transfersBetween(gtfs, stops, "NRW", "DIS")?.[0].duration).toBe(600);
   });
 
   it("reports interchange time against the station", () => {
-    const gtfs = toGtfsData(feed({ interchange: { NRW1: 300 } }));
+    const stops = new StopTable();
+    const gtfs = toGtfsData(feed({ interchange: { NRW1: 300 } }), stops);
 
-    expect(gtfs.interchange.NRW).toBe(300);
+    expect(gtfs.interchange[stops.indexOf("NRW")]).toBe(300);
   });
 
 });

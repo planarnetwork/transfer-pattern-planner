@@ -3,7 +3,7 @@ Transfer Pattern Journey Planner
 =========================
 [![Test](https://github.com/planarnetwork/transfer-pattern-planner/actions/workflows/ci.yml/badge.svg)](https://github.com/planarnetwork/transfer-pattern-planner/actions/workflows/ci.yml) ![npm](https://img.shields.io/npm/v/transfer-pattern-planner.svg?style=flat-square)
 
-Implementation of Hannah Bast's [transfer pattern journey planner](https://ad.informatik.uni-freiburg.de/files/transferpatterns.pdf). This repository does not generate transfer patterns, they need to be created in a pre-processing step.
+Implementation of Hannah Bast's [transfer pattern journey planner](https://ad.informatik.uni-freiburg.de/files/transferpatterns.pdf). Transfer patterns are generated in a pre-processing step, which `npm run patterns` does.
 
 In addition to the algorithm described in the paper this implementation:
  - Checks calendars to ensure services are running on the specified day
@@ -55,11 +55,17 @@ days the other does not.
 
 ### Transfer Patterns
 
-The patterns come from a file, which [raptor](https://github.com/planarnetwork/raptor) writes:
+The patterns come from a file, which is written once for a feed and a date:
 
 ```
-npm --prefix /path/to/raptor run patterns gtfs.zip 2026-09-15 transfer-patterns.br
+npm run patterns gtfs.zip 2026-09-15 transfer-patterns.br
 ```
+
+That plans a whole day from every station in the feed, on a pool of workers sharing one timetable.
+It uses [raptor](https://github.com/planarnetwork/raptor) to do the scanning, which is a
+devDependency: generating patterns is a job for a checkout of this repository rather than for
+something that has installed it, so the published package still depends only on the feed loader.
+`WORKERS` sets how many threads to use, and defaults to two fewer than the machine has cores.
 
 Each line is one pattern: the stations it calls at, three characters each, with nothing between
 them. The two ends are written in alphabetical order, so a pattern appears once for both directions
@@ -74,7 +80,7 @@ line above and what follows it:
 ```
 
 The file is brotli compressed. A national feed comes to about 33MB for 34 million patterns, which
-`loadTransferPatterns` reads into an index of the stations between each pair of ends.
+`PatternLoader` reads into a `TransferTree` of the stations between each pair of ends.
 
 Because a station is three characters, this needs a feed whose `stop_code` is one - a CRS code, for
 the GB rail feeds this is built for.
@@ -97,7 +103,7 @@ const { Container } = require("transfer-pattern-planner/node");
 
 const container = new Container();
 const query = await container.getQuery();
-const results = await query.plan(
+const results = query.plan(
     ["BHM", "BMO", "BSW", "BHI"],
     ["NRW"],
     new Date(),
@@ -107,35 +113,37 @@ const results = await query.plan(
 
 ### Wiring it up yourself
 
-The container is a convenience. The pieces can be assembled directly, which is what you want if the
-patterns come from somewhere other than a file - `InMemoryTransferPatternRepository` takes an index
-directly, and anything implementing `TransferPatternRepository` will do:
+The container is a convenience. A feed and the patterns for it are all a query needs:
 
 ```javascript
 const fs = require("fs");
-const {
-  loadGtfs, loadTransferPatterns, JourneyFactory, DepartAfterQuery, MultipleCriteriaFilter,
-  TimetableLegRepository, TransferRepository, TransferPatternFactory, TransferPatternPlanner
-} = require("transfer-pattern-planner");
+const { DepartAfterQuery, loadGtfs, PatternLoader, StopTable } = require("transfer-pattern-planner");
 
-const gtfs = await loadGtfs(fs.createReadStream("gtfs.zip"));
-// or toGtfsData(feed) if you already have a feed from @gb-transit/gtfs-loader
-const patterns = await loadTransferPatterns("transfer-patterns.br");
+// one table of stations for the two of them, added to by whichever reaches a station first
+const stops = new StopTable();
+const [gtfs, patterns] = await Promise.all([
+  loadGtfs(fs.createReadStream("gtfs.zip"), stops),
+  new PatternLoader(stops).load(fs.createReadStream("transfer-patterns.br"))
+]);
 
-const factory = new TransferPatternFactory(
-  patterns,
-  new TimetableLegRepository(gtfs.trips),
-  new TransferRepository(gtfs.transfers),
-  gtfs.interchange
-);
-const query = new DepartAfterQuery(
-  new TransferPatternPlanner(factory),
-  new JourneyFactory(),
-  [new MultipleCriteriaFilter()]
-);
-
-const journeys = await query.plan(["NRW"], ["LST"], new Date(), 9 * 60 * 60);
+const query = new DepartAfterQuery(gtfs, patterns);
+const journeys = query.plan(["NRW"], ["LST"], new Date(), 9 * 60 * 60);
 ```
+
+Use `toGtfsData(feed, stops)` if you already have a feed from `@gb-transit/gtfs-loader`, and pass
+your own `JourneyFilter[]` as the third argument to replace the default `MultipleCriteriaFilter`.
+
+### Stations, and how they are named
+
+A station is a three character code in the feed and in the pattern file, and a number everywhere
+between a query and its results: the query exchanges the codes it was asked in for those numbers,
+and the legs of a journey are named again on the way out. That numbering is the `StopTable` above,
+which the feed and the patterns are both read against so that they speak of a station the same way.
+The two files are still read at the same time - whichever reaches a station first numbers it.
+
+Patterns can come from somewhere other than a file: `TransferPatternRepository` is a single method
+returning the patterns between two stations, which `TransferTree` - what a file is read into -
+implements.
 
 ### In the browser
 
@@ -144,15 +152,16 @@ downloads overlap, each parsed as it arrives rather than after it has all been c
 
 ```javascript
 import { loadGTFSFromUrl } from "@gb-transit/gtfs-loader";
-import { loadTransferPatternsFromUrl, toGtfsData, createQuery } from "transfer-pattern-planner";
+import { PatternLoader, toGtfsData, DepartAfterQuery, StopTable } from "transfer-pattern-planner";
 
+const stops = new StopTable();
 const [gtfs, patterns] = await Promise.all([
-  loadGTFSFromUrl("/gtfs.zip").then(toGtfsData),
-  loadTransferPatternsFromUrl("/transfer-patterns.br")
+  loadGTFSFromUrl("/gtfs.zip").then(feed => toGtfsData(feed, stops)),
+  new PatternLoader(stops).loadFromUrl("/transfer-patterns.br")
 ]);
 
-const query = createQuery(gtfs, patterns);
-const journeys = await query.plan(["NRW"], ["LST"], new Date(), 9 * 60 * 60);
+const query = new DepartAfterQuery(gtfs, patterns);
+const journeys = query.plan(["NRW"], ["LST"], new Date(), 9 * 60 * 60);
 ```
 
 Both files have to be readable by the page, which means the host either serves them from the same
@@ -163,9 +172,8 @@ it with `Content-Encoding: br` can, and the browser will have decoded the body b
 that is noticed from the header rather than decompressing what is already plain. Pass
 `{ compressed: false }` to say so for a file that arrives decompressed some other way.
 
-`createQuery` is the whole of the wiring between having a feed and its patterns and being able to
-plan, so `loadTransferPatterns` takes the same sources the feed loader does - a `Response`, a
-`ReadableStream`, a `Blob`, the bytes, or a node stream.
+`PatternLoader` takes the same sources the feed loader does - a `Response`, a `ReadableStream`, a
+`Blob`, the bytes, or a node stream.
 
 ## Contributing
 
@@ -181,6 +189,25 @@ npm test
 [vitest](https://vitest.dev/). `npm run watch-test` reruns them as you edit.
 
 If you would like to send a pull request please write your contribution in TypeScript and if possible, add a test.
+
+## Nomenclature
+
+Three things are easy to confuse, so they are named apart:
+
+**Pattern** is the storage format - a line of a file, and the code that reads and writes one.
+`0LSTSRTIPSNRW` is a pattern: how many leading stations it takes from the line above, then the
+stations that follow, three characters each. `PatternFormat`, `FrontCoder` and `PatternLoader` are
+all about the file.
+
+**TransferTree** is the in memory structure a file is read into. Every pattern in the feed, holding
+each station it shares with another pattern once, and answering "what patterns run between these
+two stations". A `StationTransferTree` is the part of it belonging to one origin. It is a trie
+rather than a tree in the strict sense - the sharing is on the stations a pattern begins with - and
+[the paper](https://ad.informatik.uni-freiburg.de/files/transferpatterns.pdf) calls the equivalent
+a DAG, because its version shares the ends of a pattern as well as the beginnings.
+
+**TransferPattern** is one query's worth of that, flattened back out: the paths between the stations
+asked about, ready to have the timetable hung off them. `TransferPath` would say it better.
 
 ## License
 

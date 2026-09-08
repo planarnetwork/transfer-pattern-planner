@@ -7,14 +7,18 @@ export type {
   Calendar, CalendarIndex, DateIndex, DateNumber, DayOfWeek, Duration, GTFSSource, Interchange,
   ServiceCalendar, ServiceID, Stop, StopID, StopIndex, StopTime, Time, Trip, TripID
 } from "@gb-transit/gtfs-loader";
-export * from "./createQuery.js";
+export * from "./gtfs/StopTable.js";
 export * from "./gtfs/GtfsLoader.js";
 export * from "./journey/Journey.js";
 export * from "./journey/JourneyFactory.js";
-export * from "./pattern/repository/InMemoryTransferPatternRepository.js";
-export * from "./pattern/repository/PatternFormat.js";
+export * from "./pattern/format/TransferTreeBuilder.js";
+export * from "./pattern/format/FrontCoder.js";
+export * from "./pattern/format/PatternLoader.js";
+export * from "./pattern/format/PatternFormat.js";
+export * from "./pattern/repository/TransferTreeNodes.js";
+export * from "./pattern/repository/TransferTree.js";
+export * from "./pattern/repository/StationTransferTree.js";
 export * from "./pattern/repository/TimetableLegRepository.js";
-export * from "./pattern/repository/TransferPatternLoader.js";
 export * from "./pattern/repository/TransferPatternRepository.js";
 export * from "./pattern/repository/TransferRepository.js";
 export * from "./pattern/TransferPattern.js";

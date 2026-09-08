@@ -1,8 +1,8 @@
 import * as fs from "node:fs";
-import { createQuery } from "./createQuery.js";
 import { loadGtfs } from "./gtfs/GtfsLoader.js";
-import { loadTransferPatterns } from "./pattern/repository/TransferPatternLoader.js";
-import type { DepartAfterQuery } from "./query/DepartAfterQuery.js";
+import { PatternLoader } from "./pattern/format/PatternLoader.js";
+import { DepartAfterQuery } from "./query/DepartAfterQuery.js";
+import { StopTable } from "./gtfs/StopTable.js";
 
 /**
  * Reads the feed and the patterns from the paths the environment names.
@@ -16,15 +16,18 @@ export class Container {
 
   public async getQuery(): Promise<DepartAfterQuery> {
     console.time("initial load");
+
+    // one table of stations for the two of them, added to by whichever reaches a station first
+    const stops = new StopTable();
     const [gtfs, patterns] = await Promise.all([
-      loadGtfs(fs.createReadStream(process.env.GTFS ?? "gtfs.zip")),
-      loadTransferPatterns(fs.createReadStream(process.env.TRANSFER_PATTERNS ?? "transfer-patterns.br"))
+      loadGtfs(fs.createReadStream(process.env.GTFS ?? "gtfs.zip"), stops),
+      new PatternLoader(stops).load(fs.createReadStream(process.env.TRANSFER_PATTERNS ?? "transfer-patterns.br"))
     ]);
     console.timeEnd("initial load");
 
     console.log(`Memory usage: ${Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100} MB`);
 
-    return createQuery(gtfs, patterns);
+    return new DepartAfterQuery(gtfs, patterns);
   }
 
 }

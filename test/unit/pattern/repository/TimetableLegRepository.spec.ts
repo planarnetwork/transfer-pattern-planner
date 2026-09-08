@@ -1,20 +1,23 @@
 import { describe, expect, it } from "vitest";
 import type { TripCalls, TripIndex } from "../../../../src/gtfs/GtfsLoader.js";
 import { TimetableLegRepository } from "../../../../src/pattern/repository/TimetableLegRepository.js";
-import { calls, st } from "../../util.js";
+import type { StopIdx } from "../../../../src/gtfs/StopTable.js";
+import { at, calls, st, stopsFor } from "../../util.js";
 
 describe("TimetableLegRepository", () => {
 
   it("returns legs between a given origin and destination", () => {
+    const stops = stopsFor();
     const t = calls(
+      stops,
       st("A", 1000),
       st("B", 1005),
       st("C", 1010),
       st("D", 1015),
     );
 
-    const repository = new TimetableLegRepository(createTripIndex([t]));
-    const [leg] = repository.getLegs("B", "C", 1, 0);
+    const repository = new TimetableLegRepository(createTripIndex([t]), stops);
+    const [leg] = repository.getLegs(at(stops, "B"), at(stops, "C"), 1, 0);
 
     expect(leg.origin).toBe("B");
     expect(leg.destination).toBe("C");
@@ -23,7 +26,9 @@ describe("TimetableLegRepository", () => {
   });
 
   it("sorts results by arrival time", () => {
+    const stops = stopsFor();
     const t1 = calls(
+      stops,
       st("A", 1010),
       st("B", 1015),
       st("C", 1020),
@@ -31,14 +36,15 @@ describe("TimetableLegRepository", () => {
     );
 
     const t2 = calls(
+      stops,
       st("A", 1000),
       st("B", 1005),
       st("C", 1010),
       st("D", 1015),
     );
 
-    const repository = new TimetableLegRepository(createTripIndex([t1, t2]));
-    const [leg1, leg2] = repository.getLegs("B", "C", 1, 0);
+    const repository = new TimetableLegRepository(createTripIndex([t1, t2]), stops);
+    const [leg1, leg2] = repository.getLegs(at(stops, "B"), at(stops, "C"), 1, 0);
 
     expect(leg1.origin).toBe("B");
     expect(leg1.destination).toBe("C");
@@ -49,13 +55,14 @@ describe("TimetableLegRepository", () => {
   });
 
   it("keeps the platform of each call in the leg's stop times", () => {
+    const stops = stopsFor("A", "B");
     const t: TripCalls = {
-      ...calls(st("A1", 1000), st("B2", 1005)),
-      stations: ["A", "B"]
+      ...calls(stops, st("A1", 1000), st("B2", 1005)),
+      stations: [at(stops, "A"), at(stops, "B")]
     };
 
-    const repository = new TimetableLegRepository({ A: { B: [t] } });
-    const [leg] = repository.getLegs("A", "B", 1, 0);
+    const repository = new TimetableLegRepository(createTripIndex([t]), stops);
+    const [leg] = repository.getLegs(at(stops, "A"), at(stops, "B"), 1, 0);
 
     expect(leg.origin).toBe("A");
     expect(leg.destination).toBe("B");
@@ -65,19 +72,14 @@ describe("TimetableLegRepository", () => {
 });
 
 function createTripIndex(trips: TripCalls[]): TripIndex {
-  const tripIndex: TripIndex = {};
+  const tripIndex: TripIndex = [];
 
   for (const t of trips) {
     for (let i = 0; i < t.calls.length - 1; i++) {
       if (t.calls[i].pickUp) {
         for (let j = i + 1; j < t.calls.length; j++) {
           if (t.calls[j].dropOff) {
-            const origin = t.stations[i];
-            const destination = t.stations[j];
-
-            tripIndex[origin] ??= {};
-            tripIndex[origin][destination] ??= [];
-            tripIndex[origin][destination].push(t);
+            add(tripIndex, t.stations[i], t.stations[j], t);
           }
         }
       }
@@ -85,4 +87,13 @@ function createTripIndex(trips: TripCalls[]): TripIndex {
   }
 
   return tripIndex;
+}
+
+function add(index: TripIndex, origin: StopIdx, destination: StopIdx, trip: TripCalls): void {
+  const byDestination = index[origin] ?? new Map();
+  const trips = byDestination.get(destination) ?? [];
+
+  trips.push(trip);
+  byDestination.set(destination, trips);
+  index[origin] = byDestination;
 }

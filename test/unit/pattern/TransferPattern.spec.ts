@@ -1,24 +1,26 @@
 import { describe, expect, it } from "vitest";
 import { TransferPattern } from "../../../src/pattern/TransferPattern.js";
 import { TransferPatternNode } from "../../../src/pattern/TransferPatternNode.js";
-import { tr, tt } from "../util.js";
+import { at, stopsFor, tr, tt } from "../util.js";
 
 describe("TransferPattern", () => {
-  const interchange = { A: 5, B: 10, C: 15 };
+  // every leg of a node arrives at the station the node is, so a node carries the interchange time
+  // of its own station: child1 is B, child2 is C, child3 is D
+  const stops = stopsFor("A", "B", "C", "D");
 
   it("will return the journey seeds with transfers until it finds timetable legs", () => {
     const child3 = new TransferPatternNode(
       [tt("C", "D", 1130, 1200)],
       [],
       [],
-      10
+      20
     );
 
     const child2 = new TransferPatternNode(
       [],
       [tr("B", "C", 10)],
       [child3],
-      10
+      15
     );
 
     const child1 = new TransferPatternNode(
@@ -28,8 +30,8 @@ describe("TransferPattern", () => {
       10
     );
 
-    const pattern = new TransferPattern("A", [child1], interchange);
-    const journeys = pattern.getJourneys({ A: 10 });
+    const pattern = new TransferPattern(at(stops, "A"), [child1]);
+    const journeys = pattern.getJourneys(new Map([[at(stops, "A"), 10]]));
 
     expect(journeys).toEqual([
       [tr("A", "B", 10), tr("B", "C", 10), tt("C", "D", 1130, 1200)]
@@ -58,8 +60,8 @@ describe("TransferPattern", () => {
       0
     );
 
-    const pattern = new TransferPattern("A", [child1], interchange);
-    const journeys = pattern.getJourneys({ A: 10 });
+    const pattern = new TransferPattern(at(stops, "A"), [child1]);
+    const journeys = pattern.getJourneys(new Map([[at(stops, "A"), 10]]));
 
     expect(journeys).toEqual([
       [tr("A", "B", 10), tt("B", "C", 1100, 1115), tt("C", "D", 1130, 1200)]

@@ -1,4 +1,4 @@
-import type { StopID } from "@gb-transit/gtfs-loader";
+import type { StopIdx } from "../../gtfs/StopTable.js";
 import type { TransferIndex } from "../../gtfs/GtfsLoader.js";
 import type { Transfer } from "../../journey/Journey.js";
 
@@ -14,8 +14,8 @@ export class TransferRepository {
   /**
    * Return all transfers between the given origin and destination
    */
-  public getTransfers(origin: StopID, destination: StopID): Transfer[] {
-    return this.index[origin]?.[destination] ?? [];
+  public getTransfers(origin: StopIdx, destination: StopIdx): Transfer[] {
+    return this.index[origin]?.get(destination) ?? [];
   }
 
 }

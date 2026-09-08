@@ -3,8 +3,14 @@
   "compilerOptions": {
     "noEmit": false,
     "rootDir": "src",
+    // the source is ESM, so the CommonJS half of the build is a downlevel of it. node16 would read
+    // the package's "type": "module" and emit ESM into dist/cjs, which the marker copied in beside
+    // it then contradicts, so the format is named outright. Resolution is the bundler's, as it is
+    // for the esm build: node's own is what the emitted require calls will go through
+    "module": "commonjs",
+    "moduleResolution": "bundler",
     "outDir": "dist/cjs"
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist/", "src/cli"]
+  "exclude": ["node_modules", "dist/", "src/cli", "src/generate"]
 }
