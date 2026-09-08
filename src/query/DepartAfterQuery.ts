@@ -2,7 +2,7 @@ import type { DayOfWeek, StopID, Time } from "@gb-transit/gtfs-loader";
 import type { Journey } from "../journey/Journey.js";
 import type { JourneyFactory } from "../journey/JourneyFactory.js";
 import type { OriginDepartureTimes, TransferPatternPlanner } from "../pattern/TransferPatternPlanner.js";
-import { type StopIdx, type StopTable, stopIdxOf, UNKNOWN_STOP } from "../StopTable.js";
+import { type StopIdx, type StopTable, UNKNOWN_STOP } from "../StopTable.js";
 import type { JourneyFilter } from "./JourneyFilter.js";
 
 /**
@@ -41,7 +41,7 @@ export class DepartAfterQuery {
    */
   private toStopIndexes(stops: StopID[]): StopIdx[] {
     return stops
-      .map(stop => stopIdxOf(this.stops, stop))
+      .map(stop => this.stops.indexOf(stop))
       .filter(stop => stop !== UNKNOWN_STOP);
   }
 

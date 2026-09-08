@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  NO_NODE, type PatternTree, patternsBetween, readPatternTree
-} from "../../../../src/pattern/repository/PatternTree.js";
-import { type StopTable, stopTable } from "../../../../src/StopTable.js";
+import { NO_NODE, type PatternTree, readPatternTree } from "../../../../src/pattern/repository/PatternTree.js";
+import { StopTable } from "../../../../src/StopTable.js";
 import { at, named, stopsFor } from "../../util.js";
 
 /**
@@ -16,7 +14,7 @@ import { at, named, stopsFor } from "../../util.js";
 const LONDON_TO_NORWICH = ["0LSTCBGELYNRW", "2NRW", "1NRW"];
 
 async function read(lines: string[]): Promise<[PatternTree, StopTable]> {
-  const stops = stopTable();
+  const stops = new StopTable();
 
   return [await readPatternTree(lines, stops), stops];
 }
@@ -29,7 +27,7 @@ function climb(tree: PatternTree, stops: StopTable, node: number): string[] {
   const path: string[] = [];
 
   for (let n = node; n !== NO_NODE; n = tree.parent[n]) {
-    path.push(stops.stopIds[tree.stop[n]]);
+    path.push(stops.nameOf(tree.stop[n]));
   }
 
   return path.reverse();
@@ -50,30 +48,21 @@ describe("readPatternTree", () => {
     const [tree, stops] = await read(LONDON_TO_NORWICH);
 
     expect(tree.parent[0]).toBe(NO_NODE);
-    expect(stops.stopIds[tree.stop[0]]).toBe("LST");
+    expect(stops.nameOf(tree.stop[0])).toBe("LST");
   });
 
-  it("names a pattern by the node it ends on", async () => {
+  it("reads every station of a pattern by climbing from the node it ends on", async () => {
     const [tree, stops] = await read(LONDON_TO_NORWICH);
-    const ends = tree.from[at(stops, "LST")]?.get(at(stops, "NRW")) ?? [];
+    const last = tree.stop.length - 1;
 
-    expect(ends.map(node => climb(tree, stops, node))).toEqual([
-      ["LST", "CBG", "ELY", "NRW"],
-      ["LST", "CBG", "NRW"],
-      ["LST", "NRW"]
-    ]);
-  });
-
-  it("files the patterns of a pair under the end the file wrote first", async () => {
-    const [tree, stops] = await read(LONDON_TO_NORWICH);
-
-    expect(tree.from[at(stops, "NRW")]).toBe(undefined);
+    // the last line, LST NRW, is the last node the file added
+    expect(climb(tree, stops, last)).toEqual(["LST", "NRW"]);
   });
 
   it("numbers every station it meets in the table it was given", async () => {
     const [, stops] = await read(LONDON_TO_NORWICH);
 
-    expect(stops.stopIds).toEqual(["LST", "CBG", "ELY", "NRW"]);
+    expect(stops.names).toEqual(["LST", "CBG", "ELY", "NRW"]);
   });
 
   it("finds a station the feed numbered first already numbered", async () => {
@@ -82,16 +71,15 @@ describe("readPatternTree", () => {
     const stops = stopsFor("NRW", "LST");
     const tree = await readPatternTree(["0LSTNRW"], stops);
 
-    expect(stops.stopIds).toEqual(["NRW", "LST"]);
+    expect(stops.names).toEqual(["NRW", "LST"]);
     expect(tree.stop[0]).toBe(at(stops, "LST"));
   });
 
   it("counts shared stations past nine into the characters above it", async () => {
     // ":" is one past "9", so ten stations are shared
     const [tree, stops] = await read(["0AAABBBCCCDDDEEEFFFGGGHHHIIIJJJKKK", ":ZZZ"]);
-    const [end] = tree.from[at(stops, "AAA")]?.get(at(stops, "ZZZ")) ?? [];
 
-    expect(climb(tree, stops, end))
+    expect(climb(tree, stops, tree.stop.length - 1))
       .toEqual(["AAA", "BBB", "CCC", "DDD", "EEE", "FFF", "GGG", "HHH", "III", "JJJ", "ZZZ"]);
   });
 
@@ -103,12 +91,12 @@ describe("readPatternTree", () => {
 
 });
 
-describe("patternsBetween", () => {
+describe("PatternTree", () => {
 
   async function between(lines: string[], origin: string, destination: string) {
     const [tree, stops] = await read(lines);
 
-    return named(stops, patternsBetween(tree, at(stops, origin), at(stops, destination)));
+    return named(stops, tree.getPatterns(at(stops, origin), at(stops, destination)));
   }
 
   it("returns the stations between the ends, shortest pattern first", async () => {

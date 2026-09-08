@@ -1,7 +1,7 @@
 import type { Duration, ServiceCalendar, StopID, StopTime, Time, Trip } from "@gb-transit/gtfs-loader";
 import type { TripCalls } from "../../src/gtfs/GtfsLoader.js";
 import type { TimetableLeg, Transfer } from "../../src/journey/Journey.js";
-import { internStop, type StopIdx, type StopTable, stopTable } from "../../src/StopTable.js";
+import { type StopIdx, StopTable } from "../../src/StopTable.js";
 
 /**
  * A timetable leg between two stops, calling at both and nowhere else.
@@ -62,7 +62,7 @@ export function calls(stops: StopTable, ...stopTimes: StopTime[]): TripCalls {
   return {
     trip: trip(...stopTimes),
     calls: stopTimes,
-    stations: stopTimes.map(s => internStop(stops, s.stop))
+    stations: stopTimes.map(s => stops.intern(s.stop))
   };
 }
 
@@ -70,10 +70,10 @@ export function calls(stops: StopTable, ...stopTimes: StopTime[]): TripCalls {
  * A stop table with the given stations numbered in the order they are given.
  */
 export function stopsFor(...codes: StopID[]): StopTable {
-  const stops = stopTable();
+  const stops = new StopTable();
 
   for (const code of codes) {
-    internStop(stops, code);
+    stops.intern(code);
   }
 
   return stops;
@@ -83,14 +83,14 @@ export function stopsFor(...codes: StopID[]): StopTable {
  * The index of a station, for a spec that has to ask in the terms the planner works in.
  */
 export function at(stops: StopTable, code: StopID): StopIdx {
-  return stops.stopIndex.get(code) as StopIdx;
+  return stops.indexOf(code);
 }
 
 /**
  * Name the stops of each pattern, so that a spec can say what it means.
  */
 export function named(stops: StopTable, patterns: StopIdx[][]): StopID[][] {
-  return patterns.map(pattern => pattern.map(stop => stops.stopIds[stop]));
+  return patterns.map(pattern => pattern.map(stop => stops.nameOf(stop)));
 }
 
 /**
@@ -103,10 +103,10 @@ export function between<T>(
   const index: (Map<StopIdx, T[]> | undefined)[] = [];
 
   for (const [origin, destination, values] of entries) {
-    const from = internStop(stops, origin);
+    const from = stops.intern(origin);
     const byDestination = index[from] ?? new Map();
 
-    byDestination.set(internStop(stops, destination), values);
+    byDestination.set(stops.intern(destination), values);
     index[from] = byDestination;
   }
 

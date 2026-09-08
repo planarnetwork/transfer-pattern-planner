@@ -118,10 +118,10 @@ its patterns and being able to plan:
 
 ```javascript
 const fs = require("fs");
-const { createQuery, loadGtfs, loadTransferPatterns, stopTable } = require("transfer-pattern-planner");
+const { createQuery, loadGtfs, loadTransferPatterns, StopTable } = require("transfer-pattern-planner");
 
 // one table of stations for the two of them, added to by whichever reaches a station first
-const stops = stopTable();
+const stops = new StopTable();
 const [gtfs, patterns] = await Promise.all([
   loadGtfs(fs.createReadStream("gtfs.zip"), stops),
   loadTransferPatterns(fs.createReadStream("transfer-patterns.br"), { stops })
@@ -139,7 +139,7 @@ your own `JourneyFilter[]` as the fourth argument to `createQuery` to replace th
 
 A station is a three character code in the feed and in the pattern file, and a number everywhere
 between a query and its results: the query exchanges the codes it was asked in for those numbers,
-and the legs of a journey are named again on the way out. That numbering is the `stopTable` above,
+and the legs of a journey are named again on the way out. That numbering is the `StopTable` above,
 which the feed and the patterns are both read against so that they speak of a station the same way.
 The two files are still read at the same time - whichever reaches a station first numbers it.
 
@@ -154,9 +154,9 @@ downloads overlap, each parsed as it arrives rather than after it has all been c
 
 ```javascript
 import { loadGTFSFromUrl } from "@gb-transit/gtfs-loader";
-import { loadTransferPatternsFromUrl, toGtfsData, createQuery, stopTable } from "transfer-pattern-planner";
+import { loadTransferPatternsFromUrl, toGtfsData, createQuery, StopTable } from "transfer-pattern-planner";
 
-const stops = stopTable();
+const stops = new StopTable();
 const [gtfs, patterns] = await Promise.all([
   loadGTFSFromUrl("/gtfs.zip").then(feed => toGtfsData(feed, stops)),
   loadTransferPatternsFromUrl("/transfer-patterns.br", { stops })

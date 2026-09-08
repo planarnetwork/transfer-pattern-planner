@@ -2,7 +2,7 @@ import type { GTFSFeed, Stop, StopID } from "@gb-transit/gtfs-loader";
 import { describe, expect, it } from "vitest";
 import type { GtfsData } from "../../../src/gtfs/GtfsLoader.js";
 import { toGtfsData } from "../../../src/gtfs/GtfsLoader.js";
-import { type StopTable, stopTable } from "../../../src/StopTable.js";
+import { StopTable } from "../../../src/StopTable.js";
 import { st, trip } from "../util.js";
 
 /**
@@ -10,29 +10,29 @@ import { st, trip } from "../util.js";
  * codes back rather than reading the numbers it holds them under.
  */
 function destinationsFrom(gtfs: GtfsData, stops: StopTable, origin: StopID): StopID[] | undefined {
-  const byDestination = gtfs.trips[stops.stopIndex.get(origin) as number];
+  const byDestination = gtfs.trips[stops.indexOf(origin)];
 
-  return byDestination && [...byDestination.keys()].map(stop => stops.stopIds[stop]);
+  return byDestination && [...byDestination.keys()].map(stop => stops.nameOf(stop));
 }
 
 function tripsBetween(gtfs: GtfsData, stops: StopTable, origin: StopID, destination: StopID) {
-  return gtfs.trips[stops.stopIndex.get(origin) as number]?.get(stops.stopIndex.get(destination) as number);
+  return gtfs.trips[stops.indexOf(origin)]?.get(stops.indexOf(destination));
 }
 
 function transfersBetween(gtfs: GtfsData, stops: StopTable, origin: StopID, destination: StopID) {
-  return gtfs.transfers[stops.stopIndex.get(origin) as number]?.get(stops.stopIndex.get(destination) as number);
+  return gtfs.transfers[stops.indexOf(origin)]?.get(stops.indexOf(destination));
 }
 
 function stations(gtfs: GtfsData, stops: StopTable, origin: StopID, destination: StopID): StopID[] {
   const [trip] = tripsBetween(gtfs, stops, origin, destination) ?? [];
 
-  return trip.stations.map(stop => stops.stopIds[stop]);
+  return trip.stations.map(stop => stops.nameOf(stop));
 }
 
 describe("toGtfsData", () => {
 
   it("indexes trips between the stations their platforms belong to", () => {
-    const stops = stopTable();
+    const stops = new StopTable();
     const gtfs = toGtfsData(feed({
       trips: [trip(st("NRW1", 1000), st("DIS2", 1100), st("LST8", 1200))]
     }), stops);
@@ -44,7 +44,7 @@ describe("toGtfsData", () => {
   });
 
   it("keeps the feed's own stop times, so a leg still says which platform it uses", () => {
-    const stops = stopTable();
+    const stops = new StopTable();
     const gtfs = toGtfsData(feed({
       trips: [trip(st("NRW1", 1000), st("LST8", 1200))]
     }), stops);
@@ -56,7 +56,7 @@ describe("toGtfsData", () => {
   it("does not index a passing point, which a passenger cannot use", () => {
     const passing = { ...st("DIS2", 1100), pickUp: false, dropOff: false };
 
-    const stops = stopTable();
+    const stops = new StopTable();
     const gtfs = toGtfsData(feed({
       trips: [trip(st("NRW1", 1000), passing, st("LST8", 1200))]
     }), stops);
@@ -68,7 +68,7 @@ describe("toGtfsData", () => {
   it("does not index a call it can only be boarded at as a destination", () => {
     const setDownOnly = { ...st("LST8", 1200), pickUp: true, dropOff: false };
 
-    const stops = stopTable();
+    const stops = new StopTable();
     const gtfs = toGtfsData(feed({
       trips: [trip(st("NRW1", 1000), setDownOnly)]
     }), stops);
@@ -77,7 +77,7 @@ describe("toGtfsData", () => {
   });
 
   it("does not index a leg between two platforms of one station", () => {
-    const stops = stopTable();
+    const stops = new StopTable();
     const gtfs = toGtfsData(feed({
       trips: [trip(st("NRW1", 1000), st("NRW2", 1005), st("LST8", 1200))]
     }), stops);
@@ -90,7 +90,7 @@ describe("toGtfsData", () => {
     const front = { ...trip(st("NRW1", 1000), st("DIS2", 1100)), tripId: "front" };
     const rear = { ...trip(st("DIS2", 1130), st("LST8", 1230)), tripId: "rear" };
 
-    const stops = stopTable();
+    const stops = new StopTable();
     const gtfs = toGtfsData(feed({
       trips: [front, rear],
       links: [{ fromTripId: "front", toTripId: "rear", fromStop: "DIS2", toStop: "DIS2" }]
@@ -102,7 +102,7 @@ describe("toGtfsData", () => {
   });
 
   it("indexes footpaths between stations and drops those within one", () => {
-    const stops = stopTable();
+    const stops = new StopTable();
     const gtfs = toGtfsData(feed({
       transfers: {
         NRW1: [
@@ -118,10 +118,10 @@ describe("toGtfsData", () => {
   });
 
   it("reports interchange time against the station", () => {
-    const stops = stopTable();
+    const stops = new StopTable();
     const gtfs = toGtfsData(feed({ interchange: { NRW1: 300 } }), stops);
 
-    expect(gtfs.interchange[stops.stopIndex.get("NRW") as number]).toBe(300);
+    expect(gtfs.interchange[stops.indexOf("NRW")]).toBe(300);
   });
 
 });

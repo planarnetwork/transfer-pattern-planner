@@ -1,5 +1,5 @@
 import type { StopIdx } from "../../StopTable.js";
-import { type PatternTree, patternsBetween } from "./PatternTree.js";
+import type { PatternTree } from "./PatternTree.js";
 import type { TransferPatternRepository } from "./TransferPatternRepository.js";
 
 /**
@@ -12,7 +12,7 @@ export class InMemoryTransferPatternRepository implements TransferPatternReposit
   ) { }
 
   public getPatterns(origin: StopIdx, destination: StopIdx): StopIdx[][] {
-    return patternsBetween(this.patterns, origin, destination);
+    return this.patterns.getPatterns(origin, destination);
   }
 
 }

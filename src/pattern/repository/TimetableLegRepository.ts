@@ -75,8 +75,8 @@ export class TimetableLegRepository {
    */
   private tripToLeg(trip: TripCalls, origin: StopIdx, destination: StopIdx): TimetableLeg {
     return {
-      origin: this.stops.stopIds[origin],
-      destination: this.stops.stopIds[destination],
+      origin: this.stops.nameOf(origin),
+      destination: this.stops.nameOf(destination),
       stopTimes: this.getStopTimes(trip, origin, destination),
       trip: trip.trip
     };

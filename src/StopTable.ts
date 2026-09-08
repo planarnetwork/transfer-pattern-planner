@@ -26,39 +26,50 @@ const STOP_LIMIT = 65536;
  * read from separate files, which are loaded at the same time and add to this as they go: whichever
  * reaches a station first numbers it, and the other finds it already numbered.
  */
-export interface StopTable {
-  /** stop index to station code, for naming a stop in a result */
-  stopIds: StopID[];
-  /** station code to stop index, for reading a query's origins and destinations */
-  stopIndex: Map<StopID, StopIdx>;
-}
+export class StopTable {
 
-export function stopTable(): StopTable {
-  return { stopIds: [], stopIndex: new Map() };
-}
+  private readonly codes: StopID[] = [];
+  private readonly indexes = new Map<StopID, StopIdx>();
 
-/**
- * The index of a station, numbering it if it has not been seen before.
- */
-export function internStop(stops: StopTable, code: StopID): StopIdx {
-  let index = stops.stopIndex.get(code);
+  /**
+   * The index of a station, numbering it if it has not been seen before
+   */
+  public intern(code: StopID): StopIdx {
+    const index = this.indexes.get(code);
 
-  if (index === undefined) {
-    if (stops.stopIds.length === STOP_LIMIT) {
+    if (index !== undefined) {
+      return index;
+    }
+
+    if (this.codes.length === STOP_LIMIT) {
       throw new Error(`A feed and its patterns may name up to ${STOP_LIMIT} stations, and these name more`);
     }
 
-    index = stops.stopIds.length;
-    stops.stopIds.push(code);
-    stops.stopIndex.set(code, index);
+    this.indexes.set(code, this.codes.length);
+    this.codes.push(code);
+
+    return this.codes.length - 1;
   }
 
-  return index;
-}
+  /**
+   * The index of a station, or UNKNOWN_STOP where neither the feed nor the patterns names it
+   */
+  public indexOf(code: StopID): StopIdx {
+    return this.indexes.get(code) ?? UNKNOWN_STOP;
+  }
 
-/**
- * The index of a station, or UNKNOWN_STOP where neither the feed nor the patterns names it.
- */
-export function stopIdxOf(stops: StopTable, code: StopID): StopIdx {
-  return stops.stopIndex.get(code) ?? UNKNOWN_STOP;
+  /**
+   * The code of a station, for naming it in a result
+   */
+  public nameOf(index: StopIdx): StopID {
+    return this.codes[index];
+  }
+
+  /**
+   * Every station numbered so far, in the order they were met
+   */
+  public get names(): readonly StopID[] {
+    return this.codes;
+  }
+
 }

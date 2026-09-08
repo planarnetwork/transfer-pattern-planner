@@ -4,7 +4,7 @@ import {
   loadTransferPatterns, loadTransferPatternsFromUrl, toLines
 } from "../../../../src/pattern/repository/TransferPatternLoader.js";
 import type { TransferPatternRepository } from "../../../../src/pattern/repository/TransferPatternRepository.js";
-import { type StopTable, stopTable } from "../../../../src/StopTable.js";
+import { StopTable } from "../../../../src/StopTable.js";
 import { at, named } from "../../util.js";
 
 /**
@@ -76,7 +76,7 @@ describe("toLines", () => {
 describe("loadTransferPatterns", () => {
 
   it("decompresses the file the way a browser can", async () => {
-    const stops = stopTable();
+    const stops = new StopTable();
     const repository = await loadTransferPatterns(await brotli(`${LONDON_TO_NORWICH.join("\n")}\n`), { stops });
 
     expect(londonToNorwich(repository, stops)).toEqual([[], ["CBG"], ["CBG", "ELY"]]);
@@ -84,7 +84,7 @@ describe("loadTransferPatterns", () => {
 
   it("reads bytes the transport has already decoded", async () => {
     const plain = new TextEncoder().encode(`${LONDON_TO_NORWICH.join("\n")}\n`);
-    const stops = stopTable();
+    const stops = new StopTable();
     const repository = await loadTransferPatterns(plain, { compressed: false, stops });
 
     expect(londonToNorwich(repository, stops)).toEqual([[], ["CBG"], ["CBG", "ELY"]]);
@@ -93,7 +93,7 @@ describe("loadTransferPatterns", () => {
   it("does not decompress a response the browser decoded for it", async () => {
     const body = new Blob([`${LONDON_TO_NORWICH.join("\n")}\n`]);
     const response = new Response(body, { headers: { "content-encoding": "br" } });
-    const stops = stopTable();
+    const stops = new StopTable();
     const repository = await loadTransferPatterns(response, { stops });
 
     expect(londonToNorwich(repository, stops)).toEqual([[], ["CBG"], ["CBG", "ELY"]]);
@@ -106,7 +106,7 @@ describe("loadTransferPatternsFromUrl", () => {
   it("fetches the file and reads it", async () => {
     const compressed = await brotli(`${LONDON_TO_NORWICH.join("\n")}\n`);
     const asked: string[] = [];
-    const stops = stopTable();
+    const stops = new StopTable();
     const repository = await loadTransferPatternsFromUrl("https://example.com/patterns.br", {
       stops,
       fetch: async (url) => {

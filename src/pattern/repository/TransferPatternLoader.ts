@@ -1,5 +1,5 @@
 import { type GTFSSource, toChunks } from "@gb-transit/gtfs-loader";
-import { type StopTable, stopTable } from "../../StopTable.js";
+import { StopTable } from "../../StopTable.js";
 import { InMemoryTransferPatternRepository } from "./InMemoryTransferPatternRepository.js";
 import { readPatternTree } from "./PatternTree.js";
 
@@ -46,7 +46,7 @@ export async function loadTransferPatterns(
   options: LoadPatternOptions = {}
 ): Promise<InMemoryTransferPatternRepository> {
   const compressed = options.compressed ?? !alreadyDecoded(source);
-  const stops = options.stops ?? stopTable();
+  const stops = options.stops ?? new StopTable();
 
   return new InMemoryTransferPatternRepository(await readPatternTree(toLines(bytes(source, compressed)), stops));
 }

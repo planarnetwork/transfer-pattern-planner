@@ -1,31 +1,72 @@
-import { internStop, type StopIdx, type StopTable } from "../../StopTable.js";
+import type { StopIdx, StopTable } from "../../StopTable.js";
 import { CODE_WIDTH, sharedStops } from "./PatternFormat.js";
-
-/**
- * Every pattern in a file, holding each stop it shares with another pattern once.
- *
- * A file is sorted, so patterns beginning the same way sit together and a line only records what it
- * adds to the line above it. That is a tree, and this is it read back as one rather than flattened
- * into a string per pattern: a national feed holds 34 million patterns of five stops each, which is
- * 187 million stops laid out flat and 37 million once the beginnings are shared.
- *
- * Nothing ever walks down it, only up, so a node is its stop and the node before it - no children,
- * and no objects. A pattern is the node its last stop sits at, and reading it back is climbing.
- */
-export interface PatternTree {
-  /** the stop at each node */
-  stop: Uint16Array;
-  /** the node before it in the pattern, NO_NODE at a first stop */
-  parent: Int32Array;
-  /** for each origin, the patterns from it by where they end. A pattern is the node it ends on */
-  from: (Map<StopIdx, number[]> | undefined)[];
-}
 
 /** The parent of a node that starts a pattern, so there is nothing before it */
 export const NO_NODE = -1;
 
 /** Nodes a tree starts with room for, doubling from there as the file is read */
 const INITIAL_NODES = 1024;
+
+/**
+ * Every pattern in a file, holding each stop it shares with another pattern once.
+ *
+ * A file is sorted, so patterns beginning the same way sit together and a line only records what it
+ * adds to the line above it. That is a tree, and this is it held as one rather than flattened into a
+ * string per pattern: a national feed holds 34 million patterns of five stops each, which is 187
+ * million stops laid out flat and 37 million once the beginnings are shared.
+ *
+ * Nothing ever walks down it, only up, so a node is its stop and the node before it - no children,
+ * and no objects. A pattern is the node its last stop sits at, and reading it back is climbing.
+ */
+export class PatternTree {
+
+  constructor(
+    /** the stop at each node */
+    public readonly stop: Uint16Array,
+    /** the node before it in the pattern, NO_NODE at a first stop */
+    public readonly parent: Int32Array,
+    /** for each origin, the patterns from it by where they end. A pattern is the node it ends on */
+    private readonly from: (Map<StopIdx, number[]> | undefined)[]
+  ) {}
+
+  /**
+   * The patterns running between two stops, as the stations between them, shortest pattern first.
+   *
+   * The ends are left out, as they are what was asked for.
+   */
+  public getPatterns(origin: StopIdx, destination: StopIdx): StopIdx[][] {
+    // a pattern is held once for both directions, so it hangs off whichever of its two ends the
+    // file wrote first, and a journey the other way round is the same pattern read backwards
+    const ends = this.from[origin]?.get(destination) ?? this.from[destination]?.get(origin);
+
+    if (ends === undefined) {
+      return [];
+    }
+
+    const patterns = ends.map(end => this.stopsOf(end, origin));
+
+    patterns.sort((a, b) => a.length - b.length);
+
+    return patterns;
+  }
+
+  /**
+   * The stations between the ends of the pattern ending at this node, in the order they are
+   * travelled in by someone starting from the given origin.
+   */
+  private stopsOf(end: number, origin: StopIdx): StopIdx[] {
+    const stops: StopIdx[] = [];
+
+    // climbing runs from a pattern's last stop to its first, which is the order it is travelled in
+    // when the end it hangs from is the destination rather than the origin
+    for (let node = end; node !== NO_NODE; node = this.parent[node]) {
+      stops.push(this.stop[node]);
+    }
+
+    return (this.stop[end] === origin ? stops : stops.reverse()).slice(1, -1);
+  }
+
+}
 
 /**
  * Read a file into the tree it describes.
@@ -55,7 +96,7 @@ export async function readPatternTree(
     let id = ids.get(key);
 
     if (id === undefined) {
-      id = internStop(stops, line.slice(at, at + CODE_WIDTH));
+      id = stops.intern(line.slice(at, at + CODE_WIDTH));
       ids.set(key, id);
     }
 
@@ -98,38 +139,9 @@ export async function readPatternTree(
     }
   }
 
-  return { ...nodes.build(), from };
-}
+  const { stop, parent } = nodes.build();
 
-/**
- * The patterns running between two stops, as the stations between them, shortest pattern first.
- *
- * The ends are left out, as they are what was asked for.
- */
-export function patternsBetween(tree: PatternTree, origin: StopIdx, destination: StopIdx): StopIdx[][] {
-  // a pattern is held once for both directions, so it hangs off whichever of its two ends the file
-  // wrote first, and a journey the other way round is the same pattern read backwards
-  const ends = tree.from[origin]?.get(destination) ?? tree.from[destination]?.get(origin);
-
-  if (ends === undefined) {
-    return [];
-  }
-
-  const patterns = ends.map(end => {
-    const stops: StopIdx[] = [];
-
-    // climbing runs from a pattern's last stop to its first, which is the order it is travelled in
-    // when the end it hangs from is the destination rather than the origin
-    for (let node = end; node !== NO_NODE; node = tree.parent[node]) {
-      stops.push(tree.stop[node]);
-    }
-
-    return (tree.stop[end] === origin ? stops : stops.reverse()).slice(1, -1);
-  });
-
-  patterns.sort((a, b) => a.length - b.length);
-
-  return patterns;
+  return new PatternTree(stop, parent, from);
 }
 
 /**

@@ -3,7 +3,7 @@ import {
   type StopTime, type Trip
 } from "@gb-transit/gtfs-loader";
 import type { Transfer } from "../journey/Journey.js";
-import { internStop, type StopIdx, type StopTable } from "../StopTable.js";
+import type { StopIdx, StopTable } from "../StopTable.js";
 
 /**
  * Returns trips, transfers, interchange time and calendars from a GTFS zip.
@@ -58,7 +58,7 @@ function indexTripsByLeg(
     const trip: TripCalls = {
       trip: trips[t],
       calls: calls[t],
-      stations: calls[t].map(c => internStop(stops, stations.get(c.stop) ?? c.stop))
+      stations: calls[t].map(c => stops.intern(stations.get(c.stop) ?? c.stop))
     };
 
     for (let i = 0; i < trip.calls.length - 1; i++) {
@@ -83,7 +83,7 @@ function indexTransfersByDestination(transfers: Transfer[], stops: StopTable): T
   const index: TransferIndex = [];
 
   for (const transfer of transfers) {
-    add(index, internStop(stops, transfer.origin), internStop(stops, transfer.destination), transfer);
+    add(index, stops.intern(transfer.origin), stops.intern(transfer.destination), transfer);
   }
 
   return index;
@@ -97,7 +97,7 @@ function indexInterchange(interchange: Interchange, stops: StopTable): Interchan
   const times: InterchangeTimes = [];
 
   for (const station in interchange) {
-    times[internStop(stops, station)] = interchange[station];
+    times[stops.intern(station)] = interchange[station];
   }
 
   return times;

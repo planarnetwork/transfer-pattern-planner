@@ -3,7 +3,7 @@ import { createQuery } from "./createQuery.js";
 import { loadGtfs } from "./gtfs/GtfsLoader.js";
 import { loadTransferPatterns } from "./pattern/repository/TransferPatternLoader.js";
 import type { DepartAfterQuery } from "./query/DepartAfterQuery.js";
-import { stopTable } from "./StopTable.js";
+import { StopTable } from "./StopTable.js";
 
 /**
  * Reads the feed and the patterns from the paths the environment names.
@@ -19,7 +19,7 @@ export class Container {
     console.time("initial load");
 
     // one table of stations for the two of them, added to by whichever reaches a station first
-    const stops = stopTable();
+    const stops = new StopTable();
     const [gtfs, patterns] = await Promise.all([
       loadGtfs(fs.createReadStream(process.env.GTFS ?? "gtfs.zip"), stops),
       loadTransferPatterns(fs.createReadStream(process.env.TRANSFER_PATTERNS ?? "transfer-patterns.br"), { stops })
