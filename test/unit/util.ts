@@ -21,16 +21,16 @@ export function tt(origin: StopID, destination: StopID, departureTime: Time, arr
 }
 
 /**
- * A footpath, available all day.
+ * A footpath, available all day unless a time window is given.
  */
-export function tr(origin: StopID, destination: StopID, duration: Duration): Transfer {
-  return {
-    origin,
-    destination,
-    duration,
-    startTime: 0,
-    endTime: Number.MAX_SAFE_INTEGER
-  };
+export function tr(
+  origin: StopID,
+  destination: StopID,
+  duration: Duration,
+  startTime: Time = 0,
+  endTime: Time = Number.MAX_SAFE_INTEGER
+): Transfer {
+  return { origin, destination, duration, startTime, endTime };
 }
 
 /**
