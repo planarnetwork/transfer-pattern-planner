@@ -1,8 +1,8 @@
 import type { StopIdx, StopTable } from "../../gtfs/StopTable.js";
 import { CODE_WIDTH, sharedStops } from "./PatternFormat.js";
-import { NO_NODE, DagNodes } from "../repository/DagNodes.js";
-import { StationDag } from "../repository/StationDag.js";
-import { DagRepository } from "../repository/DagRepository.js";
+import { NO_NODE, TransferTreeNodes } from "../repository/TransferTreeNodes.js";
+import { StationTransferTree } from "../repository/StationTransferTree.js";
+import { TransferTree } from "../repository/TransferTree.js";
 
 /** No origin is open, which is only true before the first line and after the last */
 const NO_ORIGIN = -1;
@@ -13,10 +13,10 @@ const NO_ORIGIN = -1;
  * The shared count at the front of a line already names the node it hangs from, so nothing is
  * rebuilt on the way in: no path per line, and no string per pattern.
  */
-export class DagBuilder {
+export class TransferTreeBuilder {
 
-  private readonly nodes = new DagNodes();
-  private readonly from: (StationDag | undefined)[] = [];
+  private readonly nodes = new TransferTreeNodes();
+  private readonly from: (StationTransferTree | undefined)[] = [];
   /** station codes by their characters, so a line is not cut up for a station already seen */
   private readonly ids = new Map<number, StopIdx>();
   /** the node at each depth of the line before, which is what a shared count points into */
@@ -29,7 +29,7 @@ export class DagBuilder {
     private readonly stops: StopTable
   ) {}
 
-  public async read(lines: AsyncIterable<string> | Iterable<string>): Promise<DagRepository> {
+  public async read(lines: AsyncIterable<string> | Iterable<string>): Promise<TransferTree> {
     for await (const line of lines) {
       // a file ends with a blank line, and a line of nothing but its count names no pattern
       if (line.length > 1) {
@@ -39,7 +39,7 @@ export class DagBuilder {
 
     this.closeOrigin();
 
-    return new DagRepository(this.nodes.stopColumn(), this.nodes.parentColumn(), this.from);
+    return new TransferTree(this.nodes.stopColumn(), this.nodes.parentColumn(), this.from);
   }
 
   private addLine(line: string): void {
@@ -90,7 +90,7 @@ export class DagBuilder {
       );
     }
 
-    this.from[this.origin] = new StationDag(this.open);
+    this.from[this.origin] = new StationTransferTree(this.open);
     this.open = new Map();
   }
 

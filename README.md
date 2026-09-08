@@ -80,7 +80,7 @@ line above and what follows it:
 ```
 
 The file is brotli compressed. A national feed comes to about 33MB for 34 million patterns, which
-`PatternLoader` reads into a dag of the stations between each pair of ends.
+`PatternLoader` reads into a `TransferTree` of the stations between each pair of ends.
 
 Because a station is three characters, this needs a feed whose `stop_code` is one - a CRS code, for
 the GB rail feeds this is built for.
@@ -142,7 +142,7 @@ which the feed and the patterns are both read against so that they speak of a st
 The two files are still read at the same time - whichever reaches a station first numbers it.
 
 Patterns can come from somewhere other than a file: `TransferPatternRepository` is a single method
-returning the patterns between two stations, which `DagRepository` - what a file is read into -
+returning the patterns between two stations, which `TransferTree` - what a file is read into -
 implements.
 
 ### In the browser
@@ -189,6 +189,25 @@ npm test
 [vitest](https://vitest.dev/). `npm run watch-test` reruns them as you edit.
 
 If you would like to send a pull request please write your contribution in TypeScript and if possible, add a test.
+
+## Nomenclature
+
+Three things are easy to confuse, so they are named apart:
+
+**Pattern** is the storage format - a line of a file, and the code that reads and writes one.
+`0LSTSRTIPSNRW` is a pattern: how many leading stations it takes from the line above, then the
+stations that follow, three characters each. `PatternFormat`, `FrontCoder` and `PatternLoader` are
+all about the file.
+
+**TransferTree** is the in memory structure a file is read into. Every pattern in the feed, holding
+each station it shares with another pattern once, and answering "what patterns run between these
+two stations". A `StationTransferTree` is the part of it belonging to one origin. It is a trie
+rather than a tree in the strict sense - the sharing is on the stations a pattern begins with - and
+[the paper](https://ad.informatik.uni-freiburg.de/files/transferpatterns.pdf) calls the equivalent
+a DAG, because its version shares the ends of a pattern as well as the beginnings.
+
+**TransferPattern** is one query's worth of that, flattened back out: the paths between the stations
+asked about, ready to have the timetable hung off them. `TransferPath` would say it better.
 
 ## License
 

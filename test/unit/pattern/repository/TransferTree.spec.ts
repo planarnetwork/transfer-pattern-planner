@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { NO_NODE } from "../../../../src/pattern/repository/DagNodes.js";
-import { StationDag } from "../../../../src/pattern/repository/StationDag.js";
-import { DagRepository } from "../../../../src/pattern/repository/DagRepository.js";
+import { NO_NODE } from "../../../../src/pattern/repository/TransferTreeNodes.js";
+import { StationTransferTree } from "../../../../src/pattern/repository/StationTransferTree.js";
+import { TransferTree } from "../../../../src/pattern/repository/TransferTree.js";
 
 const LST = 0;
 const CBG = 1;
@@ -18,15 +18,15 @@ const NRW = 3;
  *
  * which is LST CBG ELY NRW, LST CBG NRW and LST NRW, all filed under LST reaching NRW.
  */
-function londonToNorwich(): DagRepository {
-  return new DagRepository(
+function londonToNorwich(): TransferTree {
+  return new TransferTree(
     Uint16Array.from([LST, CBG, ELY, NRW, NRW, NRW]),
     Int32Array.from([NO_NODE, 0, 1, 2, 1, 0]),
-    [new StationDag(new Map([[NRW, [3, 4, 5]]]))]
+    [new StationTransferTree(new Map([[NRW, [3, 4, 5]]]))]
   );
 }
 
-describe("DagRepository", () => {
+describe("TransferTree", () => {
 
   it("returns the stations between the ends, shortest pattern first", () => {
     expect(londonToNorwich().getPatterns(LST, NRW)).toEqual([[], [CBG], [CBG, ELY]]);
@@ -45,10 +45,10 @@ describe("DagRepository", () => {
   });
 
   it("reads a direct pattern as no stations between the ends", () => {
-    const tree = new DagRepository(
+    const tree = new TransferTree(
       Uint16Array.from([LST, NRW]),
       Int32Array.from([NO_NODE, 0]),
-      [new StationDag(new Map([[NRW, [1]]]))]
+      [new StationTransferTree(new Map([[NRW, [1]]]))]
     );
 
     expect(tree.getPatterns(LST, NRW)).toEqual([[]]);

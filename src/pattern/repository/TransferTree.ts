@@ -1,6 +1,6 @@
 import type { StopIdx } from "../../gtfs/StopTable.js";
-import { NO_NODE } from "./DagNodes.js";
-import type { StationDag } from "./StationDag.js";
+import { NO_NODE } from "./TransferTreeNodes.js";
+import type { StationTransferTree } from "./StationTransferTree.js";
 import type { TransferPatternRepository } from "./TransferPatternRepository.js";
 
 /**
@@ -10,12 +10,12 @@ import type { TransferPatternRepository } from "./TransferPatternRepository.js";
  * Nothing walks down it, only up, so a node is its stop and the node before it. A pattern is the
  * node its last stop sits at, and reading one back is climbing to the root.
  */
-export class DagRepository implements TransferPatternRepository {
+export class TransferTree implements TransferPatternRepository {
 
   constructor(
     public readonly stop: Uint16Array,
     public readonly parent: Int32Array,
-    private readonly from: (StationDag | undefined)[]
+    private readonly from: (StationTransferTree | undefined)[]
   ) {}
 
   /** The stations between the two ends, shortest first. The ends are what was asked for */

@@ -3,7 +3,8 @@ import type { StopIdx } from "../../gtfs/StopTable.js";
 const NOT_FOUND = -1;
 
 /**
- * The patterns leaving one station, by where they end.
+ * The patterns leaving one station, by where they end. A trie, strictly: the sharing is on the
+ * stations a pattern begins with, never the ones it ends with.
  *
  * A national feed runs patterns between nearly four million pairs, so a list per pair is four
  * million objects holding thirty four million numbers - more memory in the holding than in what is
@@ -14,7 +15,7 @@ const NOT_FOUND = -1;
  * `count` destinations in order, then `count + 1` offsets into the end nodes that follow, one per
  * destination and a last saying where they finish.
  */
-export class StationDag {
+export class StationTransferTree {
 
   private readonly data: Int32Array;
 

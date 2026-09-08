@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { NO_NODE, DagNodes } from "../../../../src/pattern/repository/DagNodes.js";
+import { NO_NODE, TransferTreeNodes } from "../../../../src/pattern/repository/TransferTreeNodes.js";
 
-describe("DagNodes", () => {
+describe("TransferTreeNodes", () => {
 
   it("numbers the nodes as they are added", () => {
-    const nodes = new DagNodes();
+    const nodes = new TransferTreeNodes();
 
     expect(nodes.add(7, NO_NODE)).toBe(0);
     expect(nodes.add(8, 0)).toBe(1);
@@ -12,7 +12,7 @@ describe("DagNodes", () => {
   });
 
   it("holds the stop and the node before it", () => {
-    const nodes = new DagNodes();
+    const nodes = new TransferTreeNodes();
     const first = nodes.add(7, NO_NODE);
     const second = nodes.add(8, first);
 
@@ -22,7 +22,7 @@ describe("DagNodes", () => {
   });
 
   it("cuts the columns down to the nodes that were added", () => {
-    const nodes = new DagNodes();
+    const nodes = new TransferTreeNodes();
 
     nodes.add(7, NO_NODE);
 
@@ -31,7 +31,7 @@ describe("DagNodes", () => {
   });
 
   it("keeps every node once it has grown past the room it started with", () => {
-    const nodes = new DagNodes();
+    const nodes = new TransferTreeNodes();
 
     // more than the 1024 it starts with, so the columns are doubled at least once
     for (let i = 0; i < 5000; i++) {

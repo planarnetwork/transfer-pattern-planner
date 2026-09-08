@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { StationDag } from "../../../../src/pattern/repository/StationDag.js";
+import { StationTransferTree } from "../../../../src/pattern/repository/StationTransferTree.js";
 
-function from(patterns: Record<number, number[]>): StationDag {
-  return new StationDag(new Map(Object.entries(patterns).map(([stop, nodes]) => [Number(stop), nodes])));
+function from(patterns: Record<number, number[]>): StationTransferTree {
+  return new StationTransferTree(new Map(Object.entries(patterns).map(([stop, nodes]) => [Number(stop), nodes])));
 }
 
-function endsAt(patterns: StationDag, destination: number): number[] | undefined {
+function endsAt(patterns: StationTransferTree, destination: number): number[] | undefined {
   const ends = patterns.endsAt(destination);
 
   return ends && [...ends];
 }
 
-describe("StationDag", () => {
+describe("StationTransferTree", () => {
 
   it("gives back the patterns to each destination", () => {
     const patterns = from({ 5: [10, 11], 9: [12] });

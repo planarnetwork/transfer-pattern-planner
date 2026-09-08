@@ -5,7 +5,10 @@ import type { TransferPatternNode } from "./TransferPatternNode.js";
 import type { JourneyLegs, OriginDepartureTimes } from "./TransferPatternPlanner.js";
 
 /**
- * The root of a series of TransferPatternNodes. Represents an abstract path between to stops.
+ * The root of a series of TransferPatternNodes. Represents an abstract path between two stops.
+ *
+ * A pattern flattened back out of the TransferTree, for one query. TransferPath would say it
+ * better.
  */
 export class TransferPattern {
 
