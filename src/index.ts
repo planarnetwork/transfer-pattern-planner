@@ -13,7 +13,6 @@ export * from "./journey/Journey.js";
 export * from "./journey/JourneyFactory.js";
 export * from "./pattern/format/TransferTreeBuilder.js";
 export * from "./pattern/format/FrontCoder.js";
-export * from "./pattern/format/DirectoryPatternProvider.js";
 export * from "./pattern/format/PatternLoader.js";
 export * from "./pattern/format/PatternProvider.js";
 export * from "./pattern/format/PatternReader.js";

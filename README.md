@@ -177,9 +177,8 @@ It comes to about three times the single file, which is the point: none of it is
 asked for.
 
 ```javascript
-const {
-  DepartAfterQuery, DirectoryPatternProvider, LazyTransferTreeRepository, loadGtfs, StopTable
-} = require("transfer-pattern-planner");
+const { DepartAfterQuery, LazyTransferTreeRepository, loadGtfs, StopTable } = require("transfer-pattern-planner");
+const { DirectoryPatternProvider } = require("transfer-pattern-planner/node");
 
 const stops = new StopTable();
 const patterns = new LazyTransferTreeRepository(new DirectoryPatternProvider("./stations"), stops);
@@ -190,8 +189,9 @@ const journeys = await query.plan(["NRW"], ["LST"], new Date(), 9 * 60 * 60);
 ```
 
 Where the files come from is `PatternProvider`, which is given a station and returns its bytes.
-`DirectoryPatternProvider` reads them from a directory; `UrlPatternProvider` fetches them, which is
-what a browser wants:
+`DirectoryPatternProvider` reads them from a directory, and lives at `transfer-pattern-planner/node`
+with the rest of what touches a file system. `UrlPatternProvider` fetches them, which is what a
+browser wants, and is at the root:
 
 ```javascript
 const patterns = new LazyTransferTreeRepository(

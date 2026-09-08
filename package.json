@@ -19,12 +19,12 @@
     },
     "./node": {
       "import": {
-        "types": "./dist/esm/Container.d.ts",
-        "default": "./dist/esm/Container.js"
+        "types": "./dist/esm/node.d.ts",
+        "default": "./dist/esm/node.js"
       },
       "require": {
-        "types": "./dist/cjs/Container.d.ts",
-        "default": "./dist/cjs/Container.js"
+        "types": "./dist/cjs/node.d.ts",
+        "default": "./dist/cjs/node.js"
       }
     },
     "./generate": {
