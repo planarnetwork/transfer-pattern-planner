@@ -27,6 +27,16 @@
         "default": "./dist/cjs/Container.js"
       }
     },
+    "./generate": {
+      "import": {
+        "types": "./dist/esm/generate/index.d.ts",
+        "default": "./dist/esm/generate/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/generate/index.d.ts",
+        "default": "./dist/cjs/generate/index.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -68,12 +78,12 @@
     "@types/node": "26.5.0",
     "@types/progress": "2.0.7",
     "progress": "2.0.3",
-    "raptor-journey-planner": "^5.0.1",
     "tsx": "^4.23.13",
     "typescript": "7.0.2",
     "vitest": "^5.0.0"
   },
   "dependencies": {
-    "@gb-transit/gtfs-loader": "^1.1.0"
+    "@gb-transit/gtfs-loader": "^1.1.0",
+    "raptor-journey-planner": "^5.0.1"
   }
 }
