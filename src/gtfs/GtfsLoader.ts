@@ -37,7 +37,8 @@ export function toGtfsData(feed: GTFSFeed, stops: StopTable): GtfsData {
     trips: indexTripsByLeg(trips, calls, stations, stops),
     transfers: indexTransfersByDestination(transfers, stops),
     interchange: indexInterchange(interchange, stops),
-    stops: feed.stops,
+    stops,
+    feedStops: feed.stops,
     stations
   };
 }
@@ -158,8 +159,10 @@ export type GtfsData = {
   trips: TripIndex,
   transfers: TransferIndex,
   interchange: InterchangeTimes,
+  /** the stations everything below a query is asked in, shared with the transfer patterns */
+  stops: StopTable,
   /** the feed's stops, as it gave them, which may identify individual platforms */
-  stops: StopIndex,
+  feedStops: StopIndex,
   /** feed stop id to the station it belongs to, which is what journeys are planned between */
   stations: Map<StopID, StopID>
 };

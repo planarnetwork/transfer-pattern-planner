@@ -27,7 +27,7 @@ export class Container {
 
     console.log(`Memory usage: ${Math.round((process.memoryUsage().heapUsed / 1024 / 1024) * 100) / 100} MB`);
 
-    return new DepartAfterQuery(gtfs, patterns, stops);
+    return new DepartAfterQuery(gtfs, patterns);
   }
 
 }

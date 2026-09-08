@@ -126,12 +126,12 @@ const [gtfs, patterns] = await Promise.all([
   loadTransferPatterns(fs.createReadStream("transfer-patterns.br"), { stops })
 ]);
 
-const query = new DepartAfterQuery(gtfs, patterns, stops);
+const query = new DepartAfterQuery(gtfs, patterns);
 const journeys = query.plan(["NRW"], ["LST"], new Date(), 9 * 60 * 60);
 ```
 
 Use `toGtfsData(feed, stops)` if you already have a feed from `@gb-transit/gtfs-loader`, and pass
-your own `JourneyFilter[]` as the fourth argument to replace the default `MultipleCriteriaFilter`.
+your own `JourneyFilter[]` as the third argument to replace the default `MultipleCriteriaFilter`.
 
 ### Stations, and how they are named
 
@@ -160,7 +160,7 @@ const [gtfs, patterns] = await Promise.all([
   loadTransferPatternsFromUrl("/transfer-patterns.br", { stops })
 ]);
 
-const query = new DepartAfterQuery(gtfs, patterns, stops);
+const query = new DepartAfterQuery(gtfs, patterns);
 const journeys = query.plan(["NRW"], ["LST"], new Date(), 9 * 60 * 60);
 ```
 

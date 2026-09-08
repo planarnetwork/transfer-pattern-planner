@@ -15,8 +15,8 @@ import { MultipleCriteriaFilter } from "./MultipleCriteriaFilter.js";
  * Search for journeys between a set of origin and destinations departing after a given time.
  *
  * A feed and the transfer patterns for it are all this needs, and both are loaded the same way
- * wherever this runs. The stop table is the one they were both read against, which is what lets
- * them speak of a station the same way:
+ * wherever this runs. They are read against one stop table, which is what lets them speak of a
+ * station the same way, and the feed carries it here:
  *
  * ```
  * const stops = new StopTable();
@@ -25,24 +25,25 @@ import { MultipleCriteriaFilter } from "./MultipleCriteriaFilter.js";
  *   loadTransferPatternsFromUrl("transfer-patterns.br", { stops })
  * ]);
  *
- * const query = new DepartAfterQuery(gtfs, patterns, stops);
+ * const query = new DepartAfterQuery(gtfs, patterns);
  * ```
  */
 export class DepartAfterQuery {
 
   private readonly planner: TransferPatternPlanner;
   private readonly resultsFactory = new JourneyFactory();
+  private readonly stops: StopTable;
 
   constructor(
     gtfs: GtfsData,
     patterns: TransferPatternRepository,
-    private readonly stops: StopTable,
     private readonly filters: JourneyFilter[] = [new MultipleCriteriaFilter()]
   ) {
+    this.stops = gtfs.stops;
     this.planner = new TransferPatternPlanner(
       new TransferPatternFactory(
         patterns,
-        new TimetableLegRepository(gtfs.trips, stops),
+        new TimetableLegRepository(gtfs.trips, gtfs.stops),
         new TransferRepository(gtfs.transfers),
         gtfs.interchange
       )
