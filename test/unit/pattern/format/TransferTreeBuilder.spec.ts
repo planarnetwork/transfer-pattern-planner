@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { StopTable } from "../../../../src/gtfs/StopTable.js";
-import { NO_NODE } from "../../../../src/pattern/repository/TransferTreeNodes.js";
-import type { TransferTree } from "../../../../src/pattern/repository/TransferTree.js";
 import { TransferTreeBuilder } from "../../../../src/pattern/format/TransferTreeBuilder.js";
+import type { TransferTree } from "../../../../src/pattern/repository/TransferTree.js";
 import { at, named, stopsFor } from "../../util.js";
 
 /**
@@ -21,15 +20,11 @@ async function read(lines: string[]): Promise<[TransferTree, StopTable]> {
   return [await new TransferTreeBuilder(stops).read(lines), stops];
 }
 
-/** A pattern read back as the stations it calls at, ends and all */
-function climb(tree: TransferTree, stops: StopTable, node: number): string[] {
-  const path: string[] = [];
+/** The patterns between two stations, named, so an expectation can say what it means */
+async function between(lines: string[], origin: string, destination: string): Promise<string[][]> {
+  const [tree, stops] = await read(lines);
 
-  for (let n = node; n !== NO_NODE; n = tree.parent[n]) {
-    path.push(stops.nameOf(tree.stop[n]));
-  }
-
-  return path.reverse();
+  return named(stops, tree.getPatterns(at(stops, origin), at(stops, destination)));
 }
 
 describe("TransferTreeBuilder", () => {
@@ -38,21 +33,17 @@ describe("TransferTreeBuilder", () => {
     const [tree] = await read(LONDON_TO_NORWICH);
 
     // twelve stations laid out flat, six once the beginnings they share are held once
-    expect(tree.stop.length).toBe(6);
+    expect(tree.nodes).toBe(6);
   });
 
-  it("hangs the first stop of a pattern off nothing", async () => {
-    const [tree, stops] = await read(LONDON_TO_NORWICH);
-
-    expect(tree.parent[0]).toBe(NO_NODE);
-    expect(stops.nameOf(tree.stop[0])).toBe("LST");
+  it("reads every pattern of a line back out", async () => {
+    expect(await between(LONDON_TO_NORWICH, "LST", "NRW")).toEqual([[], ["CBG"], ["CBG", "ELY"]]);
   });
 
-  it("hangs a line off the node its shared count points at", async () => {
-    const [tree, stops] = await read(LONDON_TO_NORWICH);
-
-    // "1NRW" takes LST and adds NRW, so its node hangs off the first
-    expect(climb(tree, stops, tree.stop.length - 1)).toEqual(["LST", "NRW"]);
+  it("takes the stations a line does not repeat from the line above it", async () => {
+    // "2NRW" takes LST CBG and adds NRW, "1NRW" takes LST alone
+    expect(await between(LONDON_TO_NORWICH, "LST", "NRW")).toContainEqual(["CBG"]);
+    expect(await between(LONDON_TO_NORWICH, "LST", "NRW")).toContainEqual([]);
   });
 
   it("numbers every station it meets in the table it was given", async () => {
@@ -68,28 +59,21 @@ describe("TransferTreeBuilder", () => {
     const tree = await new TransferTreeBuilder(stops).read(["0LSTNRW"]);
 
     expect(stops.names).toEqual(["NRW", "LST"]);
-    expect(tree.stop[0]).toBe(at(stops, "LST"));
+    expect(tree.getPatterns(at(stops, "LST"), at(stops, "NRW"))).toEqual([[]]);
   });
 
   it("counts shared stations past nine into the characters above it", async () => {
-    const [tree, stops] = await read(["0AAABBBCCCDDDEEEFFFGGGHHHIIIJJJKKK", ":ZZZ"]);
-
     // ":" is one past "9", so ten stations are shared
-    expect(climb(tree, stops, tree.stop.length - 1))
-      .toEqual(["AAA", "BBB", "CCC", "DDD", "EEE", "FFF", "GGG", "HHH", "III", "JJJ", "ZZZ"]);
+    const lines = ["0AAABBBCCCDDDEEEFFFGGGHHHIIIJJJKKK", ":ZZZ"];
+
+    expect(await between(lines, "AAA", "ZZZ"))
+      .toEqual([["BBB", "CCC", "DDD", "EEE", "FFF", "GGG", "HHH", "III", "JJJ"]]);
   });
 
   it("ignores a blank line, which a file ends with", async () => {
     const [tree] = await read(["0LSTNRW", ""]);
 
-    expect(tree.stop.length).toBe(2);
-  });
-
-  it("files every pattern of a pair under the end the file wrote first", async () => {
-    const [tree, stops] = await read(LONDON_TO_NORWICH);
-
-    expect(named(stops, tree.getPatterns(at(stops, "LST"), at(stops, "NRW"))))
-      .toEqual([[], ["CBG"], ["CBG", "ELY"]]);
+    expect(tree.nodes).toBe(2);
   });
 
   it("keeps the patterns of each origin apart", async () => {

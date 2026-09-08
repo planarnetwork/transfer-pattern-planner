@@ -13,10 +13,18 @@ import type { TransferPatternRepository } from "./TransferPatternRepository.js";
 export class TransferTree implements TransferPatternRepository {
 
   constructor(
-    public readonly stop: Uint16Array,
-    public readonly parent: Int32Array,
+    /** the stop at each node */
+    private readonly stop: Uint16Array,
+    /** the node before it, NO_NODE at a first stop */
+    private readonly parent: Int32Array,
+    /** for each origin, the patterns from it by where they end */
     private readonly from: (StationTransferTree | undefined)[]
   ) {}
+
+  /** How many nodes it holds, which is what sharing the stations of a pattern buys */
+  public get nodes(): number {
+    return this.stop.length;
+  }
 
   /** The stations between the two ends, shortest first. The ends are what was asked for */
   public getPatterns(origin: StopIdx, destination: StopIdx): StopIdx[][] {

@@ -1,8 +1,5 @@
 import type { StopID } from "@gb-transit/gtfs-loader";
 
-/** A transfer pattern as the stations it calls at, first to last */
-export type PatternPath = StopID[];
-
 /** Characters in a station code. Every code is this wide, so a line is cut up rather than split */
 export const CODE_WIDTH = 3;
 
