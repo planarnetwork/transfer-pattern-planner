@@ -78,10 +78,9 @@ export class DepartAfterQuery {
       .filter(stop => stop !== UNKNOWN_STOP);
   }
 
+  // read in local time to agree with getDay(), otherwise the date and the day of week can describe different days
   private getDateNumber(date: Date): number {
-    const str = date.toISOString();
-
-    return parseInt(str.slice(0, 4) + str.slice(5, 7) + str.slice(8, 10), 10);
+    return date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
   }
 
 }
