@@ -27,7 +27,31 @@ function provider(files: Record<string, string[]> = FILES): PatternProvider & { 
   };
 }
 
+/** the same files, however the host they came from left them */
+function served(compress: (patterns: Buffer) => Buffer): PatternProvider {
+  return {
+    async get(station: string) {
+      return FILES[station] && compress(Buffer.from(`${FILES[station].join("\n")}\n`));
+    }
+  };
+}
+
 describe("LazyTransferTreeRepository", () => {
+
+  it.each([
+    ["brotli", (patterns: Buffer) => zlib.brotliCompressSync(patterns)],
+    ["gzip", (patterns: Buffer) => zlib.gzipSync(patterns)],
+    // a browser given Content-Encoding: br decodes the file and says nothing about having done it
+    ["already decoded", (patterns: Buffer) => patterns]
+  ])("reads a station's file %s", async (_, compress) => {
+    const stops = new StopTable();
+    const patterns = new LazyTransferTreeRepository(served(compress), stops);
+
+    await patterns.prepare([stops.intern("LST")]);
+
+    expect(named(stops, patterns.getPatterns(at(stops, "LST"), at(stops, "NRW"))))
+      .toEqual([[], ["CBG"], ["CBG", "ELY"]]);
+  });
 
   it("reads a station when it is prepared and answers from what it read", async () => {
     const stops = new StopTable();

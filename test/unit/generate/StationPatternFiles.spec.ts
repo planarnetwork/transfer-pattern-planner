@@ -104,6 +104,24 @@ describe("StationPatternFiles", () => {
     expect(fs.readdirSync(out).sort()).toEqual(["LST.br", "NRW.br", "README.md"]);
   });
 
+  it("writes the gzip a browser can decompress for a file named for it", async () => {
+    const out = temp();
+
+    await new StationPatternFiles(temp(), new PatternReader(), ".gz").write(["0LSTCBGNRW"], out);
+
+    expect(fs.readdirSync(out).sort()).toEqual(["LST.gz", "NRW.gz"]);
+    expect(zlib.gunzipSync(fs.readFileSync(path.join(out, "LST.gz"))).toString()).toBe("0LSTCBGNRW\n");
+  });
+
+  it("takes out a station the feed no longer serves, whatever the files are called", async () => {
+    const out = temp();
+
+    fs.writeFileSync(path.join(out, "EDB.gz"), "stale");
+    await new StationPatternFiles(temp(), new PatternReader(), ".gz").write(["0LSTCBGNRW"], out);
+
+    expect(fs.readdirSync(out).sort()).toEqual(["LST.gz", "NRW.gz"]);
+  });
+
   it("clears up after itself", async () => {
     const work = temp();
 

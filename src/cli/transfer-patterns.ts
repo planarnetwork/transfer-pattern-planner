@@ -140,5 +140,8 @@ if (process.argv[2] && process.argv[3]) {
     .catch(e => { console.error(e); process.exit(1); });
 }
 else {
-  console.log("Please specify a GTFS file and date, and optionally where to write the patterns.");
+  console.log(
+    "Please specify a GTFS file and date, and optionally where to write the patterns: a name " +
+    "ending .br is brotli, and .gz the gzip a browser can read."
+  );
 }

@@ -26,14 +26,21 @@ async function* chunks(...parts: (string | Uint8Array)[]): AsyncGenerator<Uint8A
 }
 
 /**
- * The text brotli compressed, using only what a browser has, so the fixture is made the same way
- * the file is read back.
+ * The text compressed, using only what a browser has, so the fixture is made the same way the file
+ * is read back.
  */
-async function brotli(text: string): Promise<Blob> {
-  const format = "brotli" as unknown as CompressionFormat;
-  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream(format));
+async function compress(text: string, format: string): Promise<Blob> {
+  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream(format as CompressionFormat));
 
   return new Response(stream).blob();
+}
+
+function brotli(text: string): Promise<Blob> {
+  return compress(text, "brotli");
+}
+
+function gzip(text: string): Promise<Blob> {
+  return compress(text, "gzip");
 }
 
 describe("PatternLoader", () => {
@@ -41,6 +48,13 @@ describe("PatternLoader", () => {
   it("decompresses the file the way a browser can", async () => {
     const stops = new StopTable();
     const patterns = await new PatternLoader(stops).load(await brotli(LONDON_TO_NORWICH));
+
+    expect(londonToNorwich(patterns, stops)).toEqual([[], ["CBG"], ["CBG", "ELY"]]);
+  });
+
+  it("decompresses a gzipped file, which is what a browser can decompress", async () => {
+    const stops = new StopTable();
+    const patterns = await new PatternLoader(stops).load(await gzip(LONDON_TO_NORWICH));
 
     expect(londonToNorwich(patterns, stops)).toEqual([[], ["CBG"], ["CBG", "ELY"]]);
   });
@@ -53,10 +67,37 @@ describe("PatternLoader", () => {
     expect(londonToNorwich(patterns, stops)).toEqual([[], ["CBG"], ["CBG", "ELY"]]);
   });
 
-  it("does not decompress a response the browser decoded for it", async () => {
+  /**
+   * A host sending Content-Encoding: br has the browser decode the body on the way in, and then
+   * take the header off the response it hands over, so there is nothing left to be told by.
+   */
+  it("does not decompress a response the browser decoded and said nothing about", async () => {
     const stops = new StopTable();
-    const response = new Response(new Blob([LONDON_TO_NORWICH]), { headers: { "content-encoding": "br" } });
+    const response = new Response(new Blob([LONDON_TO_NORWICH]), { headers: { "content-type": "text/plain" } });
     const patterns = await new PatternLoader(stops).load(response);
+
+    expect(londonToNorwich(patterns, stops)).toEqual([[], ["CBG"], ["CBG", "ELY"]]);
+  });
+
+  it("decompresses a compressed response whatever its Content-Encoding says", async () => {
+    const stops = new StopTable();
+    const response = new Response(await brotli(LONDON_TO_NORWICH), { headers: { "content-encoding": "br" } });
+    const patterns = await new PatternLoader(stops).load(response);
+
+    expect(londonToNorwich(patterns, stops)).toEqual([[], ["CBG"], ["CBG", "ELY"]]);
+  });
+
+  it("takes the word of a caller who says the file is compressed", async () => {
+    const plain = new TextEncoder().encode(LONDON_TO_NORWICH);
+    const failing = new PatternLoader(new StopTable()).load(plain, { compressed: true });
+
+    await expect(failing).rejects.toThrow();
+  });
+
+  it("decides on a file that arrives a byte at a time", async () => {
+    const stops = new StopTable();
+    const bytes = new Uint8Array(await (await brotli(LONDON_TO_NORWICH)).arrayBuffer());
+    const patterns = await new PatternLoader(stops).load(chunks(...[...bytes].map(byte => new Uint8Array([byte]))));
 
     expect(londonToNorwich(patterns, stops)).toEqual([[], ["CBG"], ["CBG", "ELY"]]);
   });
@@ -64,7 +105,7 @@ describe("PatternLoader", () => {
   it("puts a line back together across the chunks it arrived in", async () => {
     const stops = new StopTable();
     const patterns = await new PatternLoader(stops)
-      .load(chunks("0LSTC", "BGELYNR", "W\n2NRW\n1NRW\n"), { compressed: false });
+      .load(chunks("0LSTC", "BGELYNR", "W\n2NRW\n1NRW\n"));
 
     expect(londonToNorwich(patterns, stops)).toEqual([[], ["CBG"], ["CBG", "ELY"]]);
   });
@@ -73,14 +114,14 @@ describe("PatternLoader", () => {
     const stops = new StopTable();
     const bytes = new TextEncoder().encode("0LSTNRW\n");
     const patterns = await new PatternLoader(stops)
-      .load(chunks(bytes.slice(0, 3), bytes.slice(3)), { compressed: false });
+      .load(chunks(bytes.slice(0, 3), bytes.slice(3)));
 
     expect(londonToNorwich(patterns, stops)).toEqual([[]]);
   });
 
   it("reads a last line the file did not end with a newline", async () => {
     const stops = new StopTable();
-    const patterns = await new PatternLoader(stops).load(chunks("0LSTNRW"), { compressed: false });
+    const patterns = await new PatternLoader(stops).load(chunks("0LSTNRW"));
 
     expect(londonToNorwich(patterns, stops)).toEqual([[]]);
   });
@@ -88,7 +129,7 @@ describe("PatternLoader", () => {
   it("reads a file written with carriage returns", async () => {
     const stops = new StopTable();
     const patterns = await new PatternLoader(stops)
-      .load(chunks("0LSTCBGELYNRW\r\n2NRW\r\n1NRW\r\n"), { compressed: false });
+      .load(chunks("0LSTCBGELYNRW\r\n2NRW\r\n1NRW\r\n"));
 
     expect(londonToNorwich(patterns, stops)).toEqual([[], ["CBG"], ["CBG", "ELY"]]);
   });

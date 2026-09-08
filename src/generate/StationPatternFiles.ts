@@ -4,11 +4,8 @@ import * as path from "node:path";
 import * as readline from "node:readline";
 import * as zlib from "node:zlib";
 import { FrontCoder } from "../pattern/format/FrontCoder.js";
-import { BROTLI_QUALITY, workFileName } from "../pattern/format/PatternFormat.js";
+import { BROTLI_QUALITY, compressionFor, workFileName } from "../pattern/format/PatternFormat.js";
 import type { PatternReader } from "../pattern/format/PatternReader.js";
-
-/** What a station's file is called, after the station */
-const EXTENSION = ".br";
 
 /**
  * Writes a file per station, holding every pattern that touches it.
@@ -20,12 +17,16 @@ const EXTENSION = ".br";
  *
  * That doubles what is stored, which matters when the whole of it is loaded and does not when a
  * station is.
+ *
+ * A file is named for what it holds: `.gz` writes gzip, which is larger than brotli and is what a
+ * browser can decompress, and anything else writes brotli.
  */
 export class StationPatternFiles {
 
   constructor(
     private readonly workDir: string,
-    private readonly reader: PatternReader
+    private readonly reader: PatternReader,
+    private readonly extension = ".br"
   ) {}
 
   public async write(lines: AsyncIterable<string> | Iterable<string>, directory: string): Promise<WrittenFiles> {
@@ -50,10 +51,10 @@ export class StationPatternFiles {
    * otherwise keep serving a station the feed has since dropped, as though it were still current.
    */
   private async removeWithdrawn(directory: string, stations: string[]): Promise<void> {
-    const written = new Set(stations.map(station => `${station}${EXTENSION}`));
+    const written = new Set(stations.map(station => `${station}${this.extension}`));
 
     for (const file of await fs.promises.readdir(directory)) {
-      if (file.endsWith(EXTENSION) && !written.has(file)) {
+      if (file.endsWith(this.extension) && !written.has(file)) {
         await fs.promises.rm(path.join(directory, file), { force: true });
       }
     }
@@ -110,13 +111,17 @@ export class StationPatternFiles {
 
     const coder = new FrontCoder();
     const coded = [...seen].sort().map(line => coder.code(line)).join("\n");
-    const compressed = zlib.brotliCompressSync(Buffer.from(`${coded}\n`), {
-      params: { [zlib.constants.BROTLI_PARAM_QUALITY]: BROTLI_QUALITY }
-    });
+    const compressed = this.compress(Buffer.from(`${coded}\n`));
 
-    await fs.promises.writeFile(path.join(directory, `${station}${EXTENSION}`), compressed);
+    await fs.promises.writeFile(path.join(directory, `${station}${this.extension}`), compressed);
 
     return compressed.length;
+  }
+
+  private compress(patterns: Buffer): Buffer {
+    return compressionFor(this.extension) === "gzip"
+      ? zlib.gzipSync(patterns)
+      : zlib.brotliCompressSync(patterns, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: BROTLI_QUALITY } });
   }
 
   private stationFile(station: string): string {

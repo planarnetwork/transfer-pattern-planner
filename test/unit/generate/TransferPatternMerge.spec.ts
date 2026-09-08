@@ -105,6 +105,15 @@ describe("TransferPatternMerge", () => {
     expect(fs.readdirSync(dir).filter(f => f.startsWith("patterns-"))).toEqual([]);
   });
 
+  it("writes the gzip a browser can decompress for a file named for it", async () => {
+    const dir = await workDir();
+    const output = path.join(dir, "out.gz");
+
+    await new TransferPatternMerge(dir).merge([part(dir, "a.gz", ["NRWCBGLST", "NRWLST"])], output);
+
+    expect(zlib.gunzipSync(fs.readFileSync(output)).toString()).toBe("0NRWCBGLST\n1LST\n");
+  });
+
   it("writes an empty file for no patterns", async () => {
     const dir = await workDir();
     const output = path.join(dir, "out.br");

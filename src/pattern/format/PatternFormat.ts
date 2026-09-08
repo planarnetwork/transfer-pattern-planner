@@ -35,6 +35,65 @@ export function checkCodeWidths(stopIds: StopID[]): void {
 export const BROTLI_QUALITY = 5;
 
 /**
+ * What a pattern file is compressed with. Brotli is the smaller of the two and is what a file is
+ * written with by default; gzip is what a browser can decompress, since no browser has
+ * `DecompressionStream("brotli")`.
+ */
+export type PatternCompression = "brotli" | "gzip";
+
+/** What a pattern file turns out to hold: one of the two compressed forms, or the lines themselves */
+export type PatternEncoding = PatternCompression | "plain";
+
+/** What a file called this is compressed with. `.gz` is gzip and anything else is brotli */
+export function compressionFor(name: string): PatternCompression {
+  return name.endsWith(".gz") ? "gzip" : "brotli";
+}
+
+/**
+ * What the bytes at the front of a pattern file say it is, which is worth more than what its host
+ * says: a browser given `Content-Encoding: br` decodes the body and then removes the header, so
+ * nothing downstream can tell from the response that it is already plain.
+ *
+ * A plain file is lines of front coded ASCII, so it begins with a count and carries on in printable
+ * characters until the first newline. Neither compressed form starts like that: gzip has two magic
+ * bytes of its own, and a brotli stream reaches an unprintable byte within a character or two.
+ */
+export function encodingOf(head: Uint8Array): PatternEncoding {
+  if (head[0] === 0x1f && head[1] === 0x8b && head[2] === 0x08) {
+    return "gzip";
+  }
+
+  return looksPlain(head) ? "plain" : "brotli";
+}
+
+function looksPlain(head: Uint8Array): boolean {
+  // nothing to decompress, and nothing to read either
+  if (head.length === 0) {
+    return true;
+  }
+
+  // the first line of a file shares nothing with the line above it, so its count is a digit
+  const shared = (head[0] ?? 0) - NONE_SHARED;
+
+  if (shared < 0 || shared > 9) {
+    return false;
+  }
+
+  for (const byte of head) {
+    // the end of the first line, however the file writes it
+    if (byte === 0x0a || byte === 0x0d) {
+      return true;
+    }
+
+    if (byte < 0x20 || byte > 0x7e) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
  * A name for the working file of a station or a bucket, from its character codes rather than from
  * itself, so a code that is not a filename stays one and two of them never share a file.
  */

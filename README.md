@@ -110,6 +110,10 @@ line above and what follows it:
 The file is brotli compressed. A national feed comes to about 33MB for 34 million patterns, which
 `PatternLoader` reads into a `TransferTreeRepository` of the stations between each pair of ends.
 
+Naming the output `.gz` writes gzip instead, which is larger and is what a browser can decompress.
+`PatternLoader` reads either, and a file already decompressed by whatever it came through, from the
+bytes rather than from a header or a name.
+
 Because a station is three characters, this needs a feed whose `stop_code` is one - a CRS code, for
 the GB rail feeds this is built for.
 
@@ -177,6 +181,9 @@ query only ever needs the stations it departs from - one file for a single origi
 It comes to about three times the single file, which is the point: none of it is read until it is
 asked for.
 
+A third argument names the files: `.gz` writes gzip, and anything else brotli. A provider reading
+them back is given the same extension.
+
 ```javascript
 const { DepartAfterQuery, LazyTransferTreeRepository, loadGtfs, StopTable } = require("transfer-pattern-planner");
 const { DirectoryPatternProvider } = require("transfer-pattern-planner/node");
@@ -242,10 +249,14 @@ const journeys = await query.plan(["NRW"], ["LST"], new Date(), 9 * 60 * 60);
 Both files have to be readable by the page, which means the host either serves them from the same
 origin or sends an `Access-Control-Allow-Origin` header.
 
-The pattern file is decompressed with `DecompressionStream("brotli")`. A host that would rather send
-it with `Content-Encoding: br` can, and the browser will have decoded the body before this sees it -
-that is noticed from the header rather than decompressing what is already plain. Pass
-`{ compressed: false }` to say so for a file that arrives decompressed some other way.
+A browser cannot decompress brotli itself: `DecompressionStream` takes the three formats the
+Compression Streams spec defines - `gzip`, `deflate` and `deflate-raw` - and node's `brotli` is
+node's alone. A page needs the file either served with `Content-Encoding: br`, which the browser
+decodes on the way in, or written as gzip. The same holds for the station files.
+
+Which of the two it is need not be said: the file is recognised from its first bytes, not from a
+`Content-Encoding` header, which a browser removes once it has decoded a body. `{ compressed: false }`
+reads a file as it is, and `true` decompresses it, for one those bytes get wrong.
 
 `PatternLoader` takes the same sources the feed loader does - a `Response`, a `ReadableStream`, a
 `Blob`, the bytes, or a node stream.

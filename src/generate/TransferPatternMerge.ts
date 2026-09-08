@@ -6,7 +6,7 @@ import type { Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import * as zlib from "node:zlib";
 import { FrontCoder } from "../pattern/format/FrontCoder.js";
-import { BROTLI_QUALITY, CODE_WIDTH, workFileName } from "../pattern/format/PatternFormat.js";
+import { BROTLI_QUALITY, CODE_WIDTH, compressionFor, workFileName } from "../pattern/format/PatternFormat.js";
 
 /**
  * Folds the files the workers wrote into one.
@@ -26,13 +26,14 @@ export class TransferPatternMerge {
   ) { }
 
   /**
-   * Merge the given files into one, and return how many patterns it holds
+   * Merge the given files into one, and return how many patterns it holds.
+   *
+   * The file is named for what it holds: an output ending `.gz` is gzipped, which is larger than
+   * brotli and is what a browser can decompress, and anything else is brotli.
    */
   public async merge(inputs: string[], output: string): Promise<MergedPatterns> {
     const buckets = await this.deal(inputs);
-    const compressed = zlib.createBrotliCompress({
-      params: { [zlib.constants.BROTLI_PARAM_QUALITY]: BROTLI_QUALITY }
-    });
+    const compressed = this.compressor(output);
     const written = pipeline(compressed, fs.createWriteStream(output));
 
     let total = 0;
@@ -58,6 +59,12 @@ export class TransferPatternMerge {
     }
 
     return { patterns: total, bytes: (await fs.promises.stat(output)).size };
+  }
+
+  private compressor(output: string): zlib.Gzip | zlib.BrotliCompress {
+    return compressionFor(output) === "gzip"
+      ? zlib.createGzip()
+      : zlib.createBrotliCompress({ params: { [zlib.constants.BROTLI_PARAM_QUALITY]: BROTLI_QUALITY } });
   }
 
   /**
