@@ -10,7 +10,7 @@ import type { TransferPatternRepository } from "./TransferPatternRepository.js";
  * Nothing walks down it, only up, so a node is its stop and the node before it. A pattern is the
  * node its last stop sits at, and reading one back is climbing to the root.
  */
-export class TransferTree implements TransferPatternRepository {
+export class TransferTreeRepository implements TransferPatternRepository {
 
   constructor(
     /** the stop at each node */

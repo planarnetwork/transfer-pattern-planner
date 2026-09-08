@@ -1,7 +1,7 @@
 import { type GTFSSource, toChunks } from "@gb-transit/gtfs-loader";
 import type { StopTable } from "../../gtfs/StopTable.js";
 import { TransferTreeBuilder } from "./TransferTreeBuilder.js";
-import type { TransferTree } from "../repository/TransferTree.js";
+import type { TransferTreeRepository } from "../repository/TransferTreeRepository.js";
 
 /**
  * Anything that can give the bytes of a transfer pattern file: the same sources the feed is read
@@ -40,10 +40,16 @@ export class PatternLoader {
     private readonly stops: StopTable
   ) {}
 
-  public async load(source: PatternSource, options: LoadPatternOptions = {}): Promise<TransferTree> {
-    const compressed = options.compressed ?? !this.alreadyDecoded(source);
+  public async load(source: PatternSource, options: LoadPatternOptions = {}): Promise<TransferTreeRepository> {
+    return new TransferTreeBuilder(this.stops).read(this.lines(source, options));
+  }
 
-    return new TransferTreeBuilder(this.stops).read(this.toLines(this.bytes(source, compressed)));
+  /**
+   * The lines of a pattern file, decompressed: what `load` reads before it builds anything, for
+   * something that wants the file rather than a repository over it.
+   */
+  public lines(source: PatternSource, options: LoadPatternOptions = {}): AsyncIterable<string> {
+    return this.toLines(this.bytes(source, options.compressed ?? !this.alreadyDecoded(source)));
   }
 
   /**
@@ -52,7 +58,7 @@ export class PatternLoader {
    * The file has to be readable by the page, which for a browser means the host either serves it
    * from the same origin or sends an Access-Control-Allow-Origin header.
    */
-  public async loadFromUrl(url: string | URL, options: FetchPatternOptions = {}): Promise<TransferTree> {
+  public async loadFromUrl(url: string | URL, options: FetchPatternOptions = {}): Promise<TransferTreeRepository> {
     const get = options.fetch ?? fetch;
     const response = await get(String(url), { signal: options.signal, headers: options.headers });
 

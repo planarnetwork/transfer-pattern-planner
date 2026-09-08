@@ -36,7 +36,7 @@ export class DepartAfterQuery {
 
   constructor(
     gtfs: GtfsData,
-    patterns: TransferPatternRepository,
+    private readonly patterns: TransferPatternRepository,
     private readonly filters: JourneyFilter[] = [new MultipleCriteriaFilter()]
   ) {
     this.stops = gtfs.stops;
@@ -51,13 +51,18 @@ export class DepartAfterQuery {
   }
 
   /**
-   * Plan a journey between the origin and destination set of stops on the given date and time
+   * Plan a journey between the origin and destination set of stops on the given date and time.
+   *
+   * A repository that does not hold every pattern is given the origins first: it cannot go and read
+   * a station while the planning is under way, since none of that is awaited.
    */
-  public plan(origins: StopID[], destinations: StopID[], date: Date, time: Time): Journey[] {
+  public async plan(origins: StopID[], destinations: StopID[], date: Date, time: Time): Promise<Journey[]> {
     // the planner works in stop indexes, the query in the codes the caller knows
-    const originTimes: OriginDepartureTimes = new Map(
-      this.toStopIndexes(origins).map(stop => [stop, time])
-    );
+    const from = this.toStopIndexes(origins);
+
+    await this.patterns.prepare?.(from);
+
+    const originTimes: OriginDepartureTimes = new Map(from.map(stop => [stop, time]));
 
     const dateNumber = this.getDateNumber(date);
     const dayOfWeek = date.getDay() as DayOfWeek;

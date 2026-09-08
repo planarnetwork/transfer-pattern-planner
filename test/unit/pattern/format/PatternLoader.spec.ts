@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { StopTable } from "../../../../src/gtfs/StopTable.js";
-import type { TransferTree } from "../../../../src/pattern/repository/TransferTree.js";
+import type { TransferTreeRepository } from "../../../../src/pattern/repository/TransferTreeRepository.js";
 import { PatternLoader } from "../../../../src/pattern/format/PatternLoader.js";
 import { at, named } from "../../util.js";
 
@@ -15,7 +15,7 @@ import { at, named } from "../../util.js";
 const LONDON_TO_NORWICH = "0LSTCBGELYNRW\n2NRW\n1NRW\n";
 
 /** The patterns the fixture holds, named again so the expectation can say what it means */
-function londonToNorwich(patterns: TransferTree, stops: StopTable): string[][] {
+function londonToNorwich(patterns: TransferTreeRepository, stops: StopTable): string[][] {
   return named(stops, patterns.getPatterns(at(stops, "LST"), at(stops, "NRW")));
 }
 

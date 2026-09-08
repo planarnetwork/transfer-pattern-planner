@@ -6,13 +6,7 @@ import type { Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import * as zlib from "node:zlib";
 import { FrontCoder } from "../pattern/format/FrontCoder.js";
-import { CODE_WIDTH } from "../pattern/format/PatternFormat.js";
-
-/**
- * How hard the finished file is compressed. Five is where brotli stops being free: it holds a few
- * hundred megabytes a second, where the levels above it manage single figures.
- */
-const QUALITY = 5;
+import { BROTLI_QUALITY, CODE_WIDTH, workFileName } from "../pattern/format/PatternFormat.js";
 
 /**
  * Folds the files the workers wrote into one.
@@ -37,7 +31,7 @@ export class TransferPatternMerge {
   public async merge(inputs: string[], output: string): Promise<MergedPatterns> {
     const buckets = await this.deal(inputs);
     const compressed = zlib.createBrotliCompress({
-      params: { [zlib.constants.BROTLI_PARAM_QUALITY]: QUALITY }
+      params: { [zlib.constants.BROTLI_PARAM_QUALITY]: BROTLI_QUALITY }
     });
     const written = pipeline(compressed, fs.createWriteStream(output));
 
@@ -139,18 +133,8 @@ export class TransferPatternMerge {
     }
   }
 
-  /**
-   * Named by the character codes of the station rather than the station, so a code that is not a
-   * filename stays one, and two stations never share a file.
-   */
   private bucketFile(bucket: string): string {
-    let name = 0;
-
-    for (let i = 0; i < bucket.length; i++) {
-      name = (name << 8) | bucket.charCodeAt(i);
-    }
-
-    return path.join(this.workDir, `patterns-${name}.txt`);
+    return path.join(this.workDir, `patterns-${workFileName(bucket)}.txt`);
   }
 
 }

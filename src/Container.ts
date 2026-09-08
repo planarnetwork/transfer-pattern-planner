@@ -7,10 +7,9 @@ import { StopTable } from "./gtfs/StopTable.js";
 /**
  * Reads the feed and the patterns from the paths the environment names.
  *
- * The node convenience, and the only thing in this package that needs a file system, which is why
- * it is reached as `transfer-pattern-planner/node` rather than from the package root. Everything the
- * root exports runs in a browser as readily as in node, and a bundler resolves what it is pointed
- * at whether or not the import turns out to be reachable.
+ * The node convenience. It reads a file system, so it is reached as
+ * `transfer-pattern-planner/node` rather than from the package root, along with the rest of what
+ * does.
  */
 export class Container {
 
