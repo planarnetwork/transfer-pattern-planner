@@ -3,66 +3,69 @@ import type { ConnectionIndex, Network } from "raptor-journey-planner";
 import { describe, expect, it } from "vitest";
 import { StringResults } from "../../../src/generate/StringResults.js";
 
+/**
+ * Station codes are three characters wide, as they are in a file, so a line can be read as the
+ * stations it names rather than guessed at.
+ */
 describe("StringResults", () => {
 
-  it("merges duplicate paths", () => {
-    const tree = new StringResults();
+  it("writes a line for every pattern a path runs through", () => {
+    const results = new StringResults();
 
-    const expected = {
-      AB: new Set([""]),
-      AC: new Set(["B"]),
-      AD: new Set(["B,C"])
-    };
+    mergePath(["AAA", "BBB", "CCC", "DDD"], results);
 
-    mergePath(["A", "B", "C", "D"], tree);
-    mergePath(["A", "B", "C"], tree);
-
-    expect(tree.finalize()).toEqual(expected);
+    expect(results.lines().sort()).toEqual(["AAABBB", "AAABBBCCC", "AAABBBCCCDDD"]);
   });
 
-  it("names a pattern with its two ends in order, whichever way it was travelled", () => {
-    const tree = new StringResults();
+  it("writes a pattern found twice only once", () => {
+    const results = new StringResults();
 
-    const expected = {
-      AC: new Set(["B"]),
-      BC: new Set(["", "D"]),
-      CE: new Set(["B"]),
-      CD: new Set([""])
-    };
+    mergePath(["AAA", "BBB", "CCC", "DDD"], results);
+    mergePath(["AAA", "BBB", "CCC"], results);
 
-    mergePath(["C", "B", "A"], tree);
-    mergePath(["C", "D", "B"], tree);
-    mergePath(["C", "B", "E"], tree);
+    expect(results.lines().sort()).toEqual(["AAABBB", "AAABBBCCC", "AAABBBCCCDDD"]);
+  });
 
-    expect(tree.finalize()).toEqual(expected);
+  it("writes the two ends of a pattern in order, whichever way it was travelled", () => {
+    const results = new StringResults();
+
+    // travelled from CCC, so every line still begins with the earlier of its two ends
+    mergePath(["CCC", "BBB", "AAA"], results);
+
+    expect(results.lines().sort()).toEqual(["AAABBBCCC", "BBBCCC"]);
   });
 
   it("keeps a pattern that another pattern runs through", () => {
-    const tree = new StringResults();
+    const results = new StringResults();
 
-    mergePath(["A", "B", "D"], tree);
-    mergePath(["A", "B", "C", "D"], tree);
+    mergePath(["AAA", "BBB", "DDD"], results);
+    mergePath(["AAA", "BBB", "CCC", "DDD"], results);
 
-    // changing at B and changing at B then C are both ways of getting from A to D
-    expect(tree.finalize().AD).toEqual(new Set(["B", "B,C"]));
+    // changing at BBB and changing at BBB then CCC are both ways of getting from AAA to DDD
+    expect(results.lines().filter(line => line.startsWith("AAA") && line.endsWith("DDD")).sort())
+      .toEqual(["AAABBBCCCDDD", "AAABBBDDD"]);
   });
 
-  it("adds different paths", () => {
-    const tree = new StringResults();
-    const expected = {
-      AC: new Set(["", "B"]),
-      AB: new Set(["", "C"]),
-      AD: new Set(["B,C", "C,B"])
-    };
+  it("writes two ways round the same pair as two patterns", () => {
+    const results = new StringResults();
 
-    mergePath(["A", "B", "C", "D"], tree);
-    mergePath(["A", "C", "B", "D"], tree);
+    mergePath(["AAA", "BBB", "CCC", "DDD"], results);
+    mergePath(["AAA", "CCC", "BBB", "DDD"], results);
 
-    expect(tree.finalize()).toEqual(expected);
+    expect(results.lines().filter(line => line.endsWith("DDD")).sort())
+      .toEqual(["AAABBBCCCDDD", "AAACCCBBBDDD"]);
+  });
+
+  it("finds nothing in a scan that reached nowhere", () => {
+    expect(new StringResults().lines()).toEqual([]);
   });
 
 });
 
+/**
+ * A path as the scan leaves it: each step is a route of its own with one trip, boarded at position
+ * 0 and alighted at position 1, departing at the step's number.
+ */
 function mergePath(path: StopID[], tree: StringResults): void {
   const kConnections: ConnectionIndex = [];
   const stopIds: StopID[] = [];
@@ -85,8 +88,6 @@ function mergePath(path: StopID[], tree: StringResults): void {
   const tripOffsets: number[] = [];
   const departures: number[] = [];
 
-  // each step of the path is a route of its own with one trip, boarded at position 0 and alighted
-  // at position 1, departing at the step's number
   for (let i = 1; i < path.length; i++) {
     const route = i - 1;
 

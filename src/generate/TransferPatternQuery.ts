@@ -2,7 +2,6 @@ import { getDateNumber } from "@gb-transit/gtfs-loader";
 import type { StopID } from "@gb-transit/gtfs-loader";
 import { RaptorAlgorithm, checkCovered } from "raptor-journey-planner";
 import type { Network } from "raptor-journey-planner";
-import type { PatternsByEnds } from "../pattern/repository/PatternFormat.js";
 import type { StringResults } from "./StringResults.js";
 
 /**
@@ -21,9 +20,9 @@ export class TransferPatternQuery {
   }
 
   /**
-   * Generate a full day's set of results and store them using the resultsFactory
+   * Scan a whole day from the origin and return the lines its patterns are written as
    */
-  public plan(origin: StopID, dateObj: Date): PatternsByEnds {
+  public plan(origin: StopID, dateObj: Date): string[] {
     const date = getDateNumber(dateObj);
     const results = this.resultFactory();
 
@@ -33,7 +32,7 @@ export class TransferPatternQuery {
 
     // an origin the feed has no stop for is not reachable, which is how the scan treats it too
     if (stop === undefined) {
-      return results.finalize();
+      return results.lines();
     }
 
     let time = 1;
@@ -44,7 +43,7 @@ export class TransferPatternQuery {
       time = results.add(kConnections, this.network);
     }
 
-    return results.finalize();
+    return results.lines();
   }
 
 }

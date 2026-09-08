@@ -4,7 +4,7 @@ import * as path from "node:path";
 import * as zlib from "node:zlib";
 import { afterEach, describe, expect, it } from "vitest";
 import { TransferPatternMerge } from "../../../src/generate/TransferPatternMerge.js";
-import { readPatterns } from "../../../src/pattern/repository/PatternFormat.js";
+import { PatternReader } from "../../../src/pattern/format/PatternReader.js";
 
 const made: string[] = [];
 
@@ -29,7 +29,7 @@ async function paths(output: string): Promise<string[][]> {
 
   const paths: string[][] = [];
 
-  for await (const path of readPatterns(text.split("\n"))) {
+  for await (const path of new PatternReader().read(text.split("\n"))) {
     paths.push(path);
   }
 

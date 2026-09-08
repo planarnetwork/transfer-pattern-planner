@@ -1,7 +1,6 @@
 import type { StopID, Time } from "@gb-transit/gtfs-loader";
 import { isTransfer, originIndexOf } from "raptor-journey-planner";
 import type { Connection, ConnectionIndex, Network, StopIdx } from "raptor-journey-planner";
-import type { JourneyPattern, PatternsByEnds } from "../pattern/repository/PatternFormat.js";
 
 /**
  * Store the kConnection results as an index where the key is the journey origin and destination and
@@ -42,21 +41,44 @@ export class StringResults {
   }
 
   /**
-   * Return the results
+   * The lines these patterns are written as, one per pattern: the stations it calls at, three
+   * characters each, with nothing between them.
+   *
+   * The two ends are written in the order they are keyed in, which is alphabetical rather than the
+   * order anyone travelled: a pattern covers both directions, so it is one line either way.
    */
-  public finalize(): PatternsByEnds {
-    const results: PatternsByEnds = {};
+  public lines(): string[] {
+    const lines: string[] = [];
 
     for (const [origin, destinations] of this.journeys) {
       for (const [destination, pattern] of destinations) {
-        const key = origin + destination;
-
-        results[key] = results[key] ?? new Set();
-        name(pattern, [], results[key]);
+        this.write(pattern, origin, destination, [], lines);
       }
     }
 
-    return results;
+    return lines;
+  }
+
+  /**
+   * Write every pattern at or below this node. Naming a path costs more than finding it again, so
+   * the change points are collected into a tree and only written out here, once each.
+   */
+  private write(
+    node: PatternNode,
+    origin: StopID,
+    destination: StopID,
+    changePoints: StopID[],
+    into: string[]
+  ): void {
+    if (node.end) {
+      into.push(origin + changePoints.join("") + destination);
+    }
+
+    for (const [stop, child] of node.children) {
+      changePoints.push(stop);
+      this.write(child, origin, destination, changePoints, into);
+      changePoints.pop();
+    }
   }
 
   /**
@@ -170,21 +192,6 @@ function departureOf(network: Network, [route, trip, from]: Connection): Time {
   const stopsInRoute = stopOffsets[route + 1] - stopOffsets[route];
 
   return departures[stopTimesBase[route] + (trip - tripOffsets[route]) * stopsInRoute + from];
-}
-
-/**
- * Name every pattern at or below this node, adding each to the set
- */
-function name(node: PatternNode, changePoints: StopID[], into: Set<JourneyPattern>): void {
-  if (node.end) {
-    into.add(changePoints.join(","));
-  }
-
-  for (const [stop, child] of node.children) {
-    changePoints.push(stop);
-    name(child, changePoints, into);
-    changePoints.pop();
-  }
 }
 
 function descend(node: PatternNode, stop: StopID): PatternNode {

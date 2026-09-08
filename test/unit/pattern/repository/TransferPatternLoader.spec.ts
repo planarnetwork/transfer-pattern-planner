@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { type PatternPath, readPatterns } from "../../../../src/pattern/repository/PatternFormat.js";
 import {
   loadTransferPatterns, loadTransferPatternsFromUrl, toLines
 } from "../../../../src/pattern/repository/TransferPatternLoader.js";
@@ -17,36 +16,6 @@ import { at, named } from "../../util.js";
  *   1NRW            LST, then NRW          -> LST NRW
  */
 const LONDON_TO_NORWICH = ["0LSTCBGELYNRW", "2NRW", "1NRW"];
-
-describe("readPatterns", () => {
-
-  it("takes the stations a line does not repeat from the line above it", async () => {
-    const paths: PatternPath[] = [];
-
-    for await (const path of readPatterns(LONDON_TO_NORWICH)) {
-      paths.push(path);
-    }
-
-    expect(paths).toEqual([
-      ["LST", "CBG", "ELY", "NRW"],
-      ["LST", "CBG", "NRW"],
-      ["LST", "NRW"]
-    ]);
-  });
-
-  it("counts shared stations past nine into the characters above it", async () => {
-    const deep = ["0AAABBBCCCDDDEEEFFFGGGHHHIIIJJJKKK", ":ZZZ"];
-    const paths: PatternPath[] = [];
-
-    for await (const path of readPatterns(deep)) {
-      paths.push(path);
-    }
-
-    // ":" is one past "9", so ten stations are shared
-    expect(paths[1]).toEqual(["AAA", "BBB", "CCC", "DDD", "EEE", "FFF", "GGG", "HHH", "III", "JJJ", "ZZZ"]);
-  });
-
-});
 
 describe("toLines", () => {
 

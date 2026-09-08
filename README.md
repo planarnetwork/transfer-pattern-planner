@@ -142,8 +142,8 @@ which the feed and the patterns are both read against so that they speak of a st
 The two files are still read at the same time - whichever reaches a station first numbers it.
 
 Patterns can come from somewhere other than a file: `TransferPatternRepository` is a single method
-returning the patterns between two stations, and `InMemoryTransferPatternRepository` is the one that
-answers from a loaded file.
+returning the patterns between two stations, which `DagRepository` - what a file is read into -
+implements.
 
 ### In the browser
 

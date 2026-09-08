@@ -2,7 +2,6 @@ import { once } from "node:events";
 import * as fs from "node:fs";
 import { pipeline } from "node:stream/promises";
 import * as zlib from "node:zlib";
-import { type PatternsByEnds, patternLines } from "../pattern/repository/PatternFormat.js";
 
 /**
  * Writes transfer patterns to a file, one line per pattern.
@@ -21,14 +20,12 @@ export class TransferPatternFile {
   }
 
   /**
-   * Write every pattern in the index.
+   * Write the lines of one station's patterns.
    *
    * It only waits on the file where it has fallen far enough behind to say so, since planning the
    * next station takes far longer than writing the last one's lines.
    */
-  public async store(patterns: PatternsByEnds): Promise<void> {
-    const lines = [...patternLines(patterns)];
-
+  public async store(lines: string[]): Promise<void> {
     if (lines.length > 0 && !this.patterns.write(`${lines.join("\n")}\n`)) {
       await once(this.patterns, "drain");
     }

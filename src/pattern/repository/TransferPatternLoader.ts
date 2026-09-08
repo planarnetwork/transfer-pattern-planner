@@ -1,7 +1,7 @@
 import { type GTFSSource, toChunks } from "@gb-transit/gtfs-loader";
 import { StopTable } from "../../gtfs/StopTable.js";
-import { InMemoryTransferPatternRepository } from "./InMemoryTransferPatternRepository.js";
-import { readPatternTree } from "./PatternTree.js";
+import type { DagRepository } from "./DagRepository.js";
+import { PatternTreeReader } from "./PatternTreeReader.js";
 
 /**
  * Anything that can give the bytes of a transfer pattern file.
@@ -44,11 +44,11 @@ export interface FetchPatternOptions extends LoadPatternOptions {
 export async function loadTransferPatterns(
   source: PatternSource,
   options: LoadPatternOptions = {}
-): Promise<InMemoryTransferPatternRepository> {
+): Promise<DagRepository> {
   const compressed = options.compressed ?? !alreadyDecoded(source);
   const stops = options.stops ?? new StopTable();
 
-  return new InMemoryTransferPatternRepository(await readPatternTree(toLines(bytes(source, compressed)), stops));
+  return new PatternTreeReader(stops).read(toLines(bytes(source, compressed)));
 }
 
 /**
@@ -63,7 +63,7 @@ export async function loadTransferPatterns(
 export async function loadTransferPatternsFromUrl(
   url: string | URL,
   options: FetchPatternOptions = {}
-): Promise<InMemoryTransferPatternRepository> {
+): Promise<DagRepository> {
   const get = options.fetch ?? fetch;
   const response = await get(String(url), { signal: options.signal, headers: options.headers });
 

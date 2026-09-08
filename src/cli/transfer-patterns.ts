@@ -7,7 +7,7 @@ import type { StopID } from "@gb-transit/gtfs-loader";
 import ProgressBar from "progress";
 import { createNetwork } from "raptor-journey-planner";
 import { TransferPatternMerge } from "../generate/TransferPatternMerge.js";
-import { checkCodeWidths } from "../pattern/repository/PatternFormat.js";
+import { checkCodeWidths } from "../pattern/format/PatternFormat.js";
 
 /**
  * Whether the timetable can be shared with a worker rather than copied to it. Raptor allocates it

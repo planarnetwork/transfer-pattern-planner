@@ -5,7 +5,7 @@ import * as readline from "node:readline";
 import type { Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import * as zlib from "node:zlib";
-import { frontCode } from "../pattern/repository/PatternFormat.js";
+import { FrontCoder } from "../pattern/format/FrontCoder.js";
 
 /**
  * How hard the finished file is compressed. Five is where brotli stops being free: it holds a few
@@ -47,8 +47,11 @@ export class TransferPatternMerge {
 
       total += patterns.length;
 
-      for (const line of frontCode(patterns)) {
-        await this.write(compressed, line);
+      // a coder per bucket: the buckets are written in order, but each starts a run of its own
+      const coder = new FrontCoder();
+
+      for (const line of patterns) {
+        await this.write(compressed, coder.code(line));
       }
     }
 
