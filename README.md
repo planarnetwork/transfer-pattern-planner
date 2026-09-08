@@ -3,7 +3,7 @@ Transfer Pattern Journey Planner
 =========================
 [![Test](https://github.com/planarnetwork/transfer-pattern-planner/actions/workflows/ci.yml/badge.svg)](https://github.com/planarnetwork/transfer-pattern-planner/actions/workflows/ci.yml) ![npm](https://img.shields.io/npm/v/transfer-pattern-planner.svg?style=flat-square)
 
-Implementation of Hannah Bast's [transfer pattern journey planner](https://ad.informatik.uni-freiburg.de/files/transferpatterns.pdf). This repository does not generate transfer patterns, they need to be created in a pre-processing step.
+Implementation of Hannah Bast's [transfer pattern journey planner](https://ad.informatik.uni-freiburg.de/files/transferpatterns.pdf). Transfer patterns are generated in a pre-processing step, which `npm run patterns` does.
 
 In addition to the algorithm described in the paper this implementation:
  - Checks calendars to ensure services are running on the specified day
@@ -55,11 +55,17 @@ days the other does not.
 
 ### Transfer Patterns
 
-The patterns come from a file, which [raptor](https://github.com/planarnetwork/raptor) writes:
+The patterns come from a file, which is written once for a feed and a date:
 
 ```
-npm --prefix /path/to/raptor run patterns gtfs.zip 2026-09-15 transfer-patterns.br
+npm run patterns gtfs.zip 2026-09-15 transfer-patterns.br
 ```
+
+That plans a whole day from every station in the feed, on a pool of workers sharing one timetable.
+It uses [raptor](https://github.com/planarnetwork/raptor) to do the scanning, which is a
+devDependency: generating patterns is a job for a checkout of this repository rather than for
+something that has installed it, so the published package still depends only on the feed loader.
+`WORKERS` sets how many threads to use, and defaults to two fewer than the machine has cores.
 
 Each line is one pattern: the stations it calls at, three characters each, with nothing between
 them. The two ends are written in alphabetical order, so a pattern appears once for both directions
@@ -120,7 +126,7 @@ const {
 
 const gtfs = await loadGtfs(fs.createReadStream("gtfs.zip"));
 // or toGtfsData(feed) if you already have a feed from @gb-transit/gtfs-loader
-const patterns = await loadTransferPatterns("transfer-patterns.br");
+const patterns = await loadTransferPatterns(fs.createReadStream("transfer-patterns.br"));
 
 const factory = new TransferPatternFactory(
   patterns,

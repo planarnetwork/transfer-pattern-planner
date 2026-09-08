@@ -11,7 +11,7 @@
     "declaration": true,
     "noEmit": true,
     "lib": ["esnext", "dom"],
-    "types": ["node"]
+    "types": ["node", "progress"]
   },
   "exclude": ["node_modules", "dist/"]
 }

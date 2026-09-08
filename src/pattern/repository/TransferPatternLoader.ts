@@ -29,7 +29,7 @@ export interface FetchPatternOptions extends LoadPatternOptions {
 }
 
 /**
- * Read the transfer patterns for a whole feed from the file raptor's `npm run patterns` writes.
+ * Read the transfer patterns for a whole feed from the file `npm run patterns` writes.
  *
  * The file is read as it arrives rather than after it has all been collected, so a 33MB national
  * file is being indexed while the rest of it is still downloading, and the text of it is never held

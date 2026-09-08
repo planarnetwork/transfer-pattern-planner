@@ -1,18 +1,33 @@
 import type { StopID } from "@gb-transit/gtfs-loader";
 
 /**
- * Reading the transfer pattern file raptor's `npm run patterns` writes.
+ * The transfer pattern file format, both halves of it.
  *
- * The format is raptor's, and this is the reading half of its `PatternFormat`. It is repeated here
- * rather than imported so that consuming a file does not mean depending on the journey planner that
- * produced it; the tests pin the exact lines, so a change to the format shows up as a failure here
- * rather than as journeys planned through the wrong stations.
+ * A file is one line per pattern, front coded against the line above it and brotli compressed.
+ * `npm run patterns` writes one and `loadTransferPatterns` reads it back, and both go through here
+ * so that the encoding is stated once. The tests pin the exact lines, so a change to the format
+ * shows up as a failure here rather than as journeys planned through the wrong stations.
  */
 
 /**
  * A transfer pattern as the stations it calls at, from the first to the last.
  */
 export type PatternPath = StopID[];
+
+/**
+ * Origin + destination.
+ */
+export type JourneyPatternKey = string;
+
+/**
+ * Comma separated list of transfer points. The origin and destination stops are omitted.
+ */
+export type JourneyPattern = string;
+
+/**
+ * The patterns between each pair of end stations, as the generator collects them.
+ */
+export type PatternsByEnds = Record<JourneyPatternKey, Set<JourneyPattern>>;
 
 /**
  * Characters in a station code. Every code in a file is this wide, which is what lets a line be
@@ -28,12 +43,67 @@ export const CODE_WIDTH = 3;
 const NONE_SHARED = "0".charCodeAt(0);
 
 /**
- * Read the stations of each pattern.
+ * The lines a set of patterns is written as, one per pattern, each the stations it calls at.
  *
- * Sorting puts patterns sharing a leading run of stations next to each other, so a line only says
- * how many of them it takes from the line before and what follows. That is a tree written depth
- * first, and it needs no marker for a pattern another pattern runs through, since every line is one
- * pattern.
+ * The index already keys a pattern by its two end stations in order, and holds the change points
+ * running the same way, so a line is the key opened out around them.
+ *
+ * That order is alphabetical, not the order anyone travelled in: the pattern from Norwich to
+ * Liverpool Street is written LST first, and is the same line as the one from Liverpool Street to
+ * Norwich read the other way. A journey either way changes at the same places in the same order,
+ * so both are one line, and a reader looking for one direction has to look under the other.
+ */
+export function* patternLines(patterns: PatternsByEnds): Generator<string> {
+  for (const key in patterns) {
+    const from = key.slice(0, CODE_WIDTH);
+    const to = key.slice(CODE_WIDTH);
+
+    for (const pattern of patterns[key]) {
+      yield from + pattern.replaceAll(",", "") + to;
+    }
+  }
+}
+
+/**
+ * Rewrite sorted lines as the tree they describe.
+ *
+ * Sorting puts patterns sharing a leading run of stations next to each other, so a line only has
+ * to say how many of them it takes from the line before and what follows. That is the same tree
+ * written depth first, and it needs no marker for a pattern that another pattern runs through,
+ * since every line is one pattern.
+ *
+ * The count is one character, `0` for none, so it stays readable while a pattern is shorter than
+ * ten stations. Longer ones carry on up the character set rather than overflowing.
+ */
+export function* frontCode(sorted: Iterable<string>): Generator<string> {
+  let previous = "";
+
+  for (const line of sorted) {
+    const shared = sharedStations(line, previous);
+
+    yield String.fromCharCode(NONE_SHARED + shared) + line.slice(shared * CODE_WIDTH);
+    previous = line;
+  }
+}
+
+/**
+ * How many whole stations two lines begin with in common. Half a station is not a shared station,
+ * so the characters they share are rounded down to the last one that ends.
+ */
+function sharedStations(line: string, previous: string): number {
+  const limit = Math.min(line.length, previous.length);
+
+  let same = 0;
+
+  while (same < limit && line[same] === previous[same]) {
+    same++;
+  }
+
+  return Math.floor(same / CODE_WIDTH);
+}
+
+/**
+ * Read back what frontCode wrote, as the stations of each pattern.
  *
  * It takes the lines a few at a time rather than all at once, since a national feed holds tens of
  * millions of them, which is why it will take a stream as readily as an array.
@@ -57,5 +127,21 @@ export async function* readPatterns(
 
     yield path;
     previous = path;
+  }
+}
+
+/**
+ * Reject a station a line could not be read back with. A code of any other width would run into
+ * the one after it and every station on the line would come back wrong.
+ */
+export function checkCodeWidths(stopIds: StopID[]): void {
+  const wrong = stopIds.filter(stop => stop.length !== CODE_WIDTH);
+
+  if (wrong.length > 0) {
+    throw new Error(
+      `Transfer patterns are written with ${CODE_WIDTH} character station codes, but ` +
+      `${wrong.length} of ${stopIds.length} are a different length, starting with ` +
+      `${wrong.slice(0, 5).map(stop => `"${stop}"`).join(", ")}`
+    );
   }
 }

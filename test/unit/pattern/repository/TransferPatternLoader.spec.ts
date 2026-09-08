@@ -6,7 +6,7 @@ import {
 } from "../../../../src/pattern/repository/TransferPatternLoader.js";
 
 /**
- * The lines below are the file as raptor writes it, spelled out rather than produced by the code
+ * The lines below are the file as `npm run patterns` writes it, spelled out rather than produced by the code
  * that reads them back. They are what pins this to the format: a line says how many leading
  * stations it takes from the line above it, then the stations that follow, three characters each.
  *
