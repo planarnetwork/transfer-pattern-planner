@@ -2,7 +2,7 @@ import type { StopIdx, StopTable } from "../../gtfs/StopTable.js";
 import { CODE_WIDTH, sharedStops } from "./PatternFormat.js";
 import { NO_NODE, TransferTreeNodes } from "../repository/TransferTreeNodes.js";
 import { StationTransferTree } from "../repository/StationTransferTree.js";
-import { TransferTree } from "../repository/TransferTree.js";
+import { TransferTreeRepository } from "../repository/TransferTreeRepository.js";
 
 /** No origin is open, which is only true before the first line and after the last */
 const NO_ORIGIN = -1;
@@ -29,7 +29,7 @@ export class TransferTreeBuilder {
     private readonly stops: StopTable
   ) {}
 
-  public async read(lines: AsyncIterable<string> | Iterable<string>): Promise<TransferTree> {
+  public async read(lines: AsyncIterable<string> | Iterable<string>): Promise<TransferTreeRepository> {
     for await (const line of lines) {
       // a file ends with a blank line, and a line of nothing but its count names no pattern
       if (line.length > 1) {
@@ -39,7 +39,7 @@ export class TransferTreeBuilder {
 
     this.closeOrigin();
 
-    return new TransferTree(this.nodes.stopColumn(), this.nodes.parentColumn(), this.from);
+    return new TransferTreeRepository(this.nodes.stopColumn(), this.nodes.parentColumn(), this.from);
   }
 
   private addLine(line: string): void {

@@ -7,7 +7,7 @@ import type { JourneyLegs, OriginDepartureTimes } from "./TransferPatternPlanner
 /**
  * The root of a series of TransferPatternNodes. Represents an abstract path between two stops.
  *
- * A pattern flattened back out of the TransferTree, for one query. TransferPath would say it
+ * A pattern flattened back out of the TransferTreeRepository, for one query. TransferPath would say it
  * better.
  */
 export class TransferPattern {

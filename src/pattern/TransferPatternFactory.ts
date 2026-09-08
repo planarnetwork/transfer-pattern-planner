@@ -37,7 +37,7 @@ export class TransferPatternFactory {
     date: DateNumber,
     dow: DayOfWeek
   ): TransferPattern {
-    const tree = { stop: origin, children: new Map() } as TransferTransferTreeNode;
+    const tree = { stop: origin, children: new Map() } as TransferTransferTreeRepositoryNode;
 
     for (const destination of destinations) {
       // a pair with no pattern between them is not an error, there is just no journey to plan
@@ -75,7 +75,7 @@ export class TransferPatternFactory {
   }
 
   private getPatternNode(
-    node: TransferTransferTreeNode,
+    node: TransferTransferTreeRepositoryNode,
     date: DateNumber,
     dow: DayOfWeek
   ): TransferPatternNode {
@@ -92,8 +92,8 @@ export class TransferPatternFactory {
 
 }
 
-interface TransferTransferTreeNode {
+interface TransferTransferTreeRepositoryNode {
   stop: StopIdx,
-  parent: TransferTransferTreeNode,
-  children: Map<StopIdx, TransferTransferTreeNode>
+  parent: TransferTransferTreeRepositoryNode,
+  children: Map<StopIdx, TransferTransferTreeRepositoryNode>
 }

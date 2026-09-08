@@ -59,6 +59,7 @@
     "prepublishOnly": "npm run build",
     "start": "tsx src/cli/plan.ts",
     "patterns": "NODE_OPTIONS='--max-old-space-size=6000' tsx src/cli/transfer-patterns.ts",
+    "pattern-files": "NODE_OPTIONS='--max-old-space-size=6000' tsx src/cli/pattern-files.ts",
     "perf": "NODE_OPTIONS=--max-old-space-size=4000 tsx test/performance.ts"
   },
   "keywords": [

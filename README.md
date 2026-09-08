@@ -107,7 +107,7 @@ line above and what follows it:
 ```
 
 The file is brotli compressed. A national feed comes to about 33MB for 34 million patterns, which
-`PatternLoader` reads into a `TransferTree` of the stations between each pair of ends.
+`PatternLoader` reads into a `TransferTreeRepository` of the stations between each pair of ends.
 
 Because a station is three characters, this needs a feed whose `stop_code` is one - a CRS code, for
 the GB rail feeds this is built for.
@@ -130,7 +130,7 @@ const { Container } = require("transfer-pattern-planner/node");
 
 const container = new Container();
 const query = await container.getQuery();
-const results = query.plan(
+const results = await query.plan(
     ["BHM", "BMO", "BSW", "BHI"],
     ["NRW"],
     new Date(),
@@ -154,11 +154,57 @@ const [gtfs, patterns] = await Promise.all([
 ]);
 
 const query = new DepartAfterQuery(gtfs, patterns);
-const journeys = query.plan(["NRW"], ["LST"], new Date(), 9 * 60 * 60);
+const journeys = await query.plan(["NRW"], ["LST"], new Date(), 9 * 60 * 60);
 ```
 
 Use `toGtfsData(feed, stops)` if you already have a feed from `@gb-transit/gtfs-loader`, and pass
 your own `JourneyFilter[]` as the third argument to replace the default `MultipleCriteriaFilter`.
+
+### Reading a station at a time
+
+The whole feed is 34 million patterns, half a gigabyte held and several seconds to read. A planner
+that answers a few queries need not hold all of it, so the patterns can also be written a file per
+station:
+
+```
+npm run pattern-files transfer-patterns.br ./stations
+```
+
+That writes `./stations/NRW.br` and so on, one per station, each holding every pattern that touches
+it. A pattern is written to both of the stations it runs between, turned round for the second, so a
+query only ever needs the stations it departs from - one file for a single origin, four for a group.
+It comes to about three times the single file, which is the point: none of it is read until it is
+asked for.
+
+```javascript
+const {
+  DepartAfterQuery, DirectoryPatternProvider, LazyTransferTreeRepository, loadGtfs, StopTable
+} = require("transfer-pattern-planner");
+
+const stops = new StopTable();
+const patterns = new LazyTransferTreeRepository(new DirectoryPatternProvider("./stations"), stops);
+const query = new DepartAfterQuery(await loadGtfs(fs.createReadStream("gtfs.zip"), stops), patterns);
+
+const journeys = await query.plan(["NRW"], ["LST"], new Date(), 9 * 60 * 60);
+```
+
+Where the files come from is `PatternProvider`, which is given a station and returns its bytes.
+`DirectoryPatternProvider` reads them from a directory; `UrlPatternProvider` fetches them, which is
+what a browser wants:
+
+```javascript
+const patterns = new LazyTransferTreeRepository(
+  new UrlPatternProvider("https://example.com/patterns/2026-09-15/"),
+  stops
+);
+```
+
+A station is read once and kept, until a hundred of them are held and the one asked for longest ago
+is dropped. Pass a different number as the third argument.
+
+`query.plan` returns a promise because of this: a repository that does not hold every pattern is
+told the origins first, and cannot go and read a station while the planning is under way. The
+repository that holds everything has nothing to do there and pays a microtask for it.
 
 ### Stations, and how they are named
 
@@ -169,7 +215,7 @@ which the feed and the patterns are both read against so that they speak of a st
 The two files are still read at the same time - whichever reaches a station first numbers it.
 
 Patterns can come from somewhere other than a file: `TransferPatternRepository` is a single method
-returning the patterns between two stations, which `TransferTree` - what a file is read into -
+returning the patterns between two stations, which `TransferTreeRepository` - what a file is read into -
 implements.
 
 ### In the browser
@@ -188,7 +234,7 @@ const [gtfs, patterns] = await Promise.all([
 ]);
 
 const query = new DepartAfterQuery(gtfs, patterns);
-const journeys = query.plan(["NRW"], ["LST"], new Date(), 9 * 60 * 60);
+const journeys = await query.plan(["NRW"], ["LST"], new Date(), 9 * 60 * 60);
 ```
 
 Both files have to be readable by the page, which means the host either serves them from the same
@@ -226,7 +272,7 @@ Three things are easy to confuse, so they are named apart:
 stations that follow, three characters each. `PatternFormat`, `FrontCoder` and `PatternLoader` are
 all about the file.
 
-**TransferTree** is the in memory structure a file is read into. Every pattern in the feed, holding
+**TransferTreeRepository** is the in memory structure a file is read into. Every pattern in the feed, holding
 each station it shares with another pattern once, and answering "what patterns run between these
 two stations". A `StationTransferTree` is the part of it belonging to one origin. It is a trie
 rather than a tree in the strict sense - the sharing is on the stations a pattern begins with - and
@@ -235,6 +281,10 @@ a DAG, because its version shares the ends of a pattern as well as the beginning
 
 **TransferPattern** is one query's worth of that, flattened back out: the paths between the stations
 asked about, ready to have the timetable hung off them. `TransferPath` would say it better.
+
+`TransferTreeRepository` holds the whole feed's tree; `LazyTransferTreeRepository` holds one
+station's at a time and reads the rest when it is asked to. Both answer the same
+`TransferPatternRepository`.
 
 ## License
 

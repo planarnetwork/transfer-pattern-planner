@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { StopTable } from "../../../../src/gtfs/StopTable.js";
 import { TransferTreeBuilder } from "../../../../src/pattern/format/TransferTreeBuilder.js";
-import type { TransferTree } from "../../../../src/pattern/repository/TransferTree.js";
+import type { TransferTreeRepository } from "../../../../src/pattern/repository/TransferTreeRepository.js";
 import { at, named, stopsFor } from "../../util.js";
 
 /**
@@ -14,7 +14,7 @@ import { at, named, stopsFor } from "../../util.js";
  */
 const LONDON_TO_NORWICH = ["0LSTCBGELYNRW", "2NRW", "1NRW"];
 
-async function read(lines: string[]): Promise<[TransferTree, StopTable]> {
+async function read(lines: string[]): Promise<[TransferTreeRepository, StopTable]> {
   const stops = new StopTable();
 
   return [await new TransferTreeBuilder(stops).read(lines), stops];
