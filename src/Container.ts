@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import { loadGtfs } from "./gtfs/GtfsLoader.js";
-import { PatternLoader } from "./pattern/repository/PatternLoader.js";
+import { PatternLoader } from "./pattern/format/PatternLoader.js";
 import { DepartAfterQuery } from "./query/DepartAfterQuery.js";
 import { StopTable } from "./gtfs/StopTable.js";
 

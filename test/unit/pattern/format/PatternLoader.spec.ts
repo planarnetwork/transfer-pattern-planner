@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { StopTable } from "../../../../src/gtfs/StopTable.js";
 import type { DagRepository } from "../../../../src/pattern/repository/DagRepository.js";
-import { PatternLoader } from "../../../../src/pattern/repository/PatternLoader.js";
+import { PatternLoader } from "../../../../src/pattern/format/PatternLoader.js";
 import { at, named } from "../../util.js";
 
 /**

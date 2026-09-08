@@ -1,7 +1,7 @@
 import { type GTFSSource, toChunks } from "@gb-transit/gtfs-loader";
 import type { StopTable } from "../../gtfs/StopTable.js";
 import { DagBuilder } from "./DagBuilder.js";
-import type { DagRepository } from "./DagRepository.js";
+import type { DagRepository } from "../repository/DagRepository.js";
 
 /**
  * Anything that can give the bytes of a transfer pattern file: the same sources the feed is read

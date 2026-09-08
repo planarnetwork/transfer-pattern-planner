@@ -1,8 +1,8 @@
 import type { StopIdx, StopTable } from "../../gtfs/StopTable.js";
-import { CODE_WIDTH, sharedStops } from "../format/PatternFormat.js";
-import { NO_NODE, PatternNodes } from "./PatternNodes.js";
-import { StationDag } from "./StationDag.js";
-import { DagRepository } from "./DagRepository.js";
+import { CODE_WIDTH, sharedStops } from "./PatternFormat.js";
+import { NO_NODE, DagNodes } from "../repository/DagNodes.js";
+import { StationDag } from "../repository/StationDag.js";
+import { DagRepository } from "../repository/DagRepository.js";
 
 /** No origin is open, which is only true before the first line and after the last */
 const NO_ORIGIN = -1;
@@ -15,7 +15,7 @@ const NO_ORIGIN = -1;
  */
 export class DagBuilder {
 
-  private readonly nodes = new PatternNodes();
+  private readonly nodes = new DagNodes();
   private readonly from: (StationDag | undefined)[] = [];
   /** station codes by their characters, so a line is not cut up for a station already seen */
   private readonly ids = new Map<number, StopIdx>();

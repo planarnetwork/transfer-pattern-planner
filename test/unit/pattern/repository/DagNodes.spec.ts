@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { NO_NODE, PatternNodes } from "../../../../src/pattern/repository/PatternNodes.js";
+import { NO_NODE, DagNodes } from "../../../../src/pattern/repository/DagNodes.js";
 
-describe("PatternNodes", () => {
+describe("DagNodes", () => {
 
   it("numbers the nodes as they are added", () => {
-    const nodes = new PatternNodes();
+    const nodes = new DagNodes();
 
     expect(nodes.add(7, NO_NODE)).toBe(0);
     expect(nodes.add(8, 0)).toBe(1);
@@ -12,7 +12,7 @@ describe("PatternNodes", () => {
   });
 
   it("holds the stop and the node before it", () => {
-    const nodes = new PatternNodes();
+    const nodes = new DagNodes();
     const first = nodes.add(7, NO_NODE);
     const second = nodes.add(8, first);
 
@@ -22,7 +22,7 @@ describe("PatternNodes", () => {
   });
 
   it("cuts the columns down to the nodes that were added", () => {
-    const nodes = new PatternNodes();
+    const nodes = new DagNodes();
 
     nodes.add(7, NO_NODE);
 
@@ -31,7 +31,7 @@ describe("PatternNodes", () => {
   });
 
   it("keeps every node once it has grown past the room it started with", () => {
-    const nodes = new PatternNodes();
+    const nodes = new DagNodes();
 
     // more than the 1024 it starts with, so the columns are doubled at least once
     for (let i = 0; i < 5000; i++) {

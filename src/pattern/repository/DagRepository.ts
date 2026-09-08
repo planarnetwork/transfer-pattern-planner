@@ -1,5 +1,5 @@
 import type { StopIdx } from "../../gtfs/StopTable.js";
-import { NO_NODE } from "./PatternNodes.js";
+import { NO_NODE } from "./DagNodes.js";
 import type { StationDag } from "./StationDag.js";
 import type { TransferPatternRepository } from "./TransferPatternRepository.js";
 

@@ -12,7 +12,7 @@ const INITIAL = 1024;
  * Typed arrays cannot grow, so these double as they fill: collecting into ordinary arrays and
  * converting at the end would hold both at once, costing more than the columns save.
  */
-export class PatternNodes {
+export class DagNodes {
 
   private stops = new Uint16Array(INITIAL);
   private parents = new Int32Array(INITIAL);

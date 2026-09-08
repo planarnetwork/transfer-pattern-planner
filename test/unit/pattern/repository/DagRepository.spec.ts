@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NO_NODE } from "../../../../src/pattern/repository/PatternNodes.js";
+import { NO_NODE } from "../../../../src/pattern/repository/DagNodes.js";
 import { StationDag } from "../../../../src/pattern/repository/StationDag.js";
 import { DagRepository } from "../../../../src/pattern/repository/DagRepository.js";
 

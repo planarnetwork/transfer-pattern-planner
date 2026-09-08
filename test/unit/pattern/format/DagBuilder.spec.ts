@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { StopTable } from "../../../../src/gtfs/StopTable.js";
-import { NO_NODE } from "../../../../src/pattern/repository/PatternNodes.js";
+import { NO_NODE } from "../../../../src/pattern/repository/DagNodes.js";
 import type { DagRepository } from "../../../../src/pattern/repository/DagRepository.js";
-import { DagBuilder } from "../../../../src/pattern/repository/DagBuilder.js";
+import { DagBuilder } from "../../../../src/pattern/format/DagBuilder.js";
 import { at, named, stopsFor } from "../../util.js";
 
 /**
