@@ -89,6 +89,40 @@ describe("readPatternTree", () => {
     expect(tree.stop.length).toBe(2);
   });
 
+  it("refuses a file that returns to a station it had left", async () => {
+    // a sorted file finishes with one origin before it starts the next, and only the origin being
+    // read is held, so going back to one would drop the patterns found the first time
+    const failing = readPatternTree(["0LSTNRW", "0EDBGLQ", "0LSTCBGNRW"], new StopTable());
+
+    await expect(failing).rejects.toThrow(/returns to a station it had already left/);
+  });
+
+});
+
+describe("PatternsFromOrigin", () => {
+
+  /**
+   * One origin reaching many destinations, which is what a busy station looks like: the patterns of
+   * a pair are found by searching the destinations rather than by holding a list per pair.
+   */
+  const many = ["AAA", "BBB", "CCC", "DDD", "EEE", "FFF", "GGG", "HHH", "III", "JJJ", "KKK"];
+
+  it("finds the patterns of each destination an origin reaches", async () => {
+    const [tree, stops] = await read(many.map((code, i) => (i === 0 ? `0LST${code}` : `1${code}`)));
+
+    for (const code of many) {
+      expect(named(stops, tree.getPatterns(at(stops, "LST"), at(stops, code)))).toEqual([[]]);
+    }
+  });
+
+  it("gives nothing for a destination between two an origin does reach", async () => {
+    const [tree, stops] = await read(["0LSTAAA", "1CCC"]);
+
+    stops.intern("BBB");
+
+    expect(tree.getPatterns(at(stops, "LST"), at(stops, "BBB"))).toEqual([]);
+  });
+
 });
 
 describe("PatternTree", () => {

@@ -4,6 +4,9 @@ import { CODE_WIDTH, sharedStops } from "./PatternFormat.js";
 /** The parent of a node that starts a pattern, so there is nothing before it */
 export const NO_NODE = -1;
 
+/** No origin is open yet, which is only true before the first line is read */
+const NO_ORIGIN = -1;
+
 /** Nodes a tree starts with room for, doubling from there as the file is read */
 const INITIAL_NODES = 1024;
 
@@ -25,8 +28,8 @@ export class PatternTree {
     public readonly stop: Uint16Array,
     /** the node before it in the pattern, NO_NODE at a first stop */
     public readonly parent: Int32Array,
-    /** for each origin, the patterns from it by where they end. A pattern is the node it ends on */
-    private readonly from: (Map<StopIdx, number[]> | undefined)[]
+    /** for each origin, the patterns from it by where they end */
+    private readonly from: (PatternsFromOrigin | undefined)[]
   ) {}
 
   /**
@@ -37,13 +40,17 @@ export class PatternTree {
   public getPatterns(origin: StopIdx, destination: StopIdx): StopIdx[][] {
     // a pattern is held once for both directions, so it hangs off whichever of its two ends the
     // file wrote first, and a journey the other way round is the same pattern read backwards
-    const ends = this.from[origin]?.get(destination) ?? this.from[destination]?.get(origin);
+    const ends = this.from[origin]?.endsAt(destination) ?? this.from[destination]?.endsAt(origin);
 
     if (ends === undefined) {
       return [];
     }
 
-    const patterns = ends.map(end => this.stopsOf(end, origin));
+    const patterns: StopIdx[][] = [];
+
+    for (const end of ends) {
+      patterns.push(this.stopsOf(end, origin));
+    }
 
     patterns.sort((a, b) => a.length - b.length);
 
@@ -69,6 +76,99 @@ export class PatternTree {
 }
 
 /**
+ * The patterns leaving one station, by where they end.
+ *
+ * A national feed runs patterns between nearly four million pairs of stations, so a list per pair
+ * would be four million objects holding thirty four million numbers between them - more memory in
+ * the holding than in the numbers held. Everything one origin knows is packed into a single array
+ * instead: how many stations it reaches, which they are, where each one's patterns begin, and then
+ * the patterns.
+ */
+export class PatternsFromOrigin {
+
+  constructor(
+    private readonly data: Int32Array
+  ) {}
+
+  /**
+   * Pack up what one origin reaches. The destinations are put in order so they can be searched.
+   */
+  public static of(patterns: Map<StopIdx, number[]>): PatternsFromOrigin {
+    const destinations = [...patterns.keys()].sort((a, b) => a - b);
+    const count = destinations.length;
+
+    let total = 0;
+
+    for (const destination of destinations) {
+      total += (patterns.get(destination) as number[]).length;
+    }
+
+    const data = new Int32Array(2 + count * 2 + total);
+    const ends = 2 + count * 2;
+
+    data[0] = count;
+
+    let at = 0;
+
+    for (let i = 0; i < count; i++) {
+      const nodes = patterns.get(destinations[i]) as number[];
+
+      data[1 + i] = destinations[i];
+      data[1 + count + i] = at;
+      data.set(nodes, ends + at);
+      at += nodes.length;
+    }
+
+    data[1 + count + count] = at;
+
+    return new PatternsFromOrigin(data);
+  }
+
+  /**
+   * The node each pattern to this destination ends on, or undefined where none run there.
+   *
+   * The nodes are a window onto the packed array rather than a copy of it.
+   */
+  public endsAt(destination: StopIdx): Int32Array | undefined {
+    const count = this.data[0];
+    const found = this.search(destination, count);
+
+    if (found === NOT_FOUND) {
+      return undefined;
+    }
+
+    const ends = 2 + count * 2;
+
+    return this.data.subarray(ends + this.data[1 + count + found], ends + this.data[2 + count + found]);
+  }
+
+  /**
+   * Which of the destinations this is, or NOT_FOUND. They are in order, so this halves the search
+   * rather than walking the thousand or so stations a busy origin reaches.
+   */
+  private search(destination: StopIdx, count: number): number {
+    let low = 0;
+    let high = count;
+
+    while (low < high) {
+      const middle = (low + high) >>> 1;
+
+      if (this.data[1 + middle] < destination) {
+        low = middle + 1;
+      }
+      else {
+        high = middle;
+      }
+    }
+
+    return low < count && this.data[1 + low] === destination ? low : NOT_FOUND;
+  }
+
+}
+
+const NOT_FOUND = -1;
+
+/**
  * Read a file into the tree it describes.
  *
  * The shared count at the front of a line already names the node the line hangs from, so nothing is
@@ -79,7 +179,7 @@ export async function readPatternTree(
   stops: StopTable
 ): Promise<PatternTree> {
   const nodes = new PatternNodes();
-  const from: (Map<StopIdx, number[]> | undefined)[] = [];
+  const index = new PatternIndex();
   // keyed by the character codes of a station rather than the station, so reading a line does not
   // cut a string out of it for every stop. A national file holds 37 million of them and 2,789 codes
   const ids = new Map<number, StopIdx>();
@@ -119,29 +219,67 @@ export async function readPatternTree(
       stack[depth++] = node;
     }
 
-    const origin = nodes.stopAt(stack[0]);
-    const destination = nodes.stopAt(node);
+    index.add(nodes.stopAt(stack[0]), nodes.stopAt(node), node);
+  }
 
-    let patterns = from[origin];
+  const { stop, parent } = nodes.build();
 
-    if (patterns === undefined) {
-      patterns = new Map();
-      from[origin] = patterns;
+  return new PatternTree(stop, parent, index.build());
+}
+
+/**
+ * The patterns of each origin, as the file is read.
+ *
+ * A sorted file finishes with one origin before it starts the next, so only the origin being read
+ * is held as a map: it is packed down as soon as the file leaves it, and what is kept from then on
+ * is one array rather than a list per destination. Holding all of them and packing at the end would
+ * cost more at once than the packing saves.
+ */
+class PatternIndex {
+
+  private readonly from: (PatternsFromOrigin | undefined)[] = [];
+  private origin = NO_ORIGIN;
+  private open = new Map<StopIdx, number[]>();
+
+  public add(origin: StopIdx, destination: StopIdx, node: number): void {
+    if (origin !== this.origin) {
+      this.close();
+      this.origin = origin;
     }
 
-    const ending = patterns.get(destination);
+    const ending = this.open.get(destination);
 
     if (ending === undefined) {
-      patterns.set(destination, [node]);
+      this.open.set(destination, [node]);
     }
     else {
       ending.push(node);
     }
   }
 
-  const { stop, parent } = nodes.build();
+  public build(): (PatternsFromOrigin | undefined)[] {
+    this.close();
 
-  return new PatternTree(stop, parent, from);
+    return this.from;
+  }
+
+  private close(): void {
+    if (this.origin === NO_ORIGIN) {
+      return;
+    }
+
+    if (this.from[this.origin] !== undefined) {
+      throw new Error(
+        "Transfer patterns are written in order, so every pattern from a station is together in the " +
+        "file. This one returns to a station it had already left, which would lose the patterns read " +
+        "the first time."
+      );
+    }
+
+    this.from[this.origin] = PatternsFromOrigin.of(this.open);
+    this.open = new Map();
+  }
+
 }
 
 /**
