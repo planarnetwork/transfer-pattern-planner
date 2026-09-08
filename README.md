@@ -34,7 +34,9 @@ patterns are both read from whatever the environment can give bytes from, and de
 off the file system and so lives at `transfer-pattern-planner/node`.
 
 Reading the feed is [`@gb-transit/gtfs-loader`](https://www.npmjs.com/package/@gb-transit/gtfs-loader)'s
-job, and it is the only dependency.
+job. Scanning one to find patterns is [raptor](https://github.com/planarnetwork/raptor)'s, and it is
+only reached from `transfer-pattern-planner/generate`, so a bundle that reads patterns does not
+carry a journey planner it never calls.
 
 ### Stations and platforms
 
@@ -62,10 +64,35 @@ npm run patterns gtfs.zip 2026-09-15 transfer-patterns.br
 ```
 
 That plans a whole day from every station in the feed, on a pool of workers sharing one timetable.
-It uses [raptor](https://github.com/planarnetwork/raptor) to do the scanning, which is a
-devDependency: generating patterns is a job for a checkout of this repository rather than for
-something that has installed it, so the published package still depends only on the feed loader.
 `WORKERS` sets how many threads to use, and defaults to two fewer than the machine has cores.
+
+The pieces it is built from are published too, for a caller that wants to arrange the work
+differently - over several days, or split across machines, which is what the nightly build of the
+GB rail feed does:
+
+```javascript
+const {createNetwork, loadGTFS} = require("raptor-journey-planner");
+const {
+  StringResults, TransferPatternFile, TransferPatternMerge, TransferPatternQuery
+} = require("transfer-pattern-planner/generate");
+
+const network = createNetwork(await loadGTFS(fs.createReadStream("gtfs.zip")), date);
+const query = new TransferPatternQuery(network, () => new StringResults());
+const part = new TransferPatternFile("part.gz");
+
+for (const station of new Set(network.stations.values())) {
+  await part.store(query.plan(station, date));
+}
+
+await part.close();
+await new TransferPatternMerge(workDir).merge(["part.gz"], "transfer-patterns.br");
+```
+
+`plan` returns the lines a station's patterns are written as. A `TransferPatternFile` collects them
+as they are found, and `TransferPatternMerge` sorts the files of a run into one, which is where the
+duplicates go - a pattern is found once from each end of the journey. They live at
+`transfer-pattern-planner/generate` rather than at the package root because they read and write
+files, and the root runs in a browser.
 
 Each line is one pattern: the stations it calls at, three characters each, with nothing between
 them. The two ends are written in alphabetical order, so a pattern appears once for both directions
