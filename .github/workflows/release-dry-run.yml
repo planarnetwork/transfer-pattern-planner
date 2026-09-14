@@ -1,0 +1,21 @@
+name: Release dry run
+
+on:
+  pull_request:
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx changeset status --since=origin/master
+        continue-on-error: true
+      - run: npm pack --dry-run
