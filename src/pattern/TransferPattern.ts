@@ -1,7 +1,7 @@
 import type { Duration, Time } from "@gb-transit/gtfs-loader";
 import type { TimetableLeg, Transfer } from "../journey/Journey.js";
 import type { StopIdx } from "../gtfs/StopTable.js";
-import type { TransferPatternNode } from "./TransferPatternNode.js";
+import { arrivalOf, type TransferPatternNode } from "./TransferPatternNode.js";
 import type { JourneyLegs, OriginDepartureTimes } from "./TransferPatternPlanner.js";
 
 /**
@@ -26,29 +26,44 @@ export class TransferPattern {
     return this.children.flatMap(n => this.getJourneysFromNode(n, time, []));
   }
 
+  /**
+   * Every timetable leg from here is a journey of its own, since the origin can be left at any time
+   * after the query's. A footpath is only walked at the time given, so it is a journey where it
+   * reaches the next station before any of those legs do. It is followed first, since the child
+   * nodes are asked for legs in the order they are reached.
+   */
   private getJourneysFromNode(node: TransferPatternNode, time: Time, transfers: Transfer[]): JourneyLegs[] {
     // todo perf test: is this filter needed
     const timetableLegs = node.timetableLegs.filter(l => l.stopTimes[0].departureTime >= time);
+    const transfer = node.children.length === 0 ? null : node.findTransfer(time);
+    const walked = transfer !== null && (timetableLegs.length === 0 || time + transfer.duration < arrivalOf(timetableLegs[0]))
+      ? this.getJourneysAfterTransfer(node, time, transfers, transfer)
+      : [];
 
-    if (timetableLegs.length > 0) {
-      return node.children.length === 0
-        ? timetableLegs.map(l => [...transfers, l])
-        : node.children.flatMap(
-          childNode => this.getJourneysFromChildNode(childNode, transfers, timetableLegs, node.interchange)
-        );
+    if (timetableLegs.length === 0) {
+      return walked;
     }
 
-    const transfer = node.findTransfer(time);
+    const ridden = node.children.length === 0
+      ? timetableLegs.map(l => [...transfers, l])
+      : node.children.flatMap(
+        childNode => this.getJourneysFromChildNode(childNode, transfers, timetableLegs, node.interchange)
+      );
 
-    if (node.children.length === 0 || !transfer) {
-      return [];
-    }
+    return walked.length === 0 ? ridden : [...walked, ...ridden];
+  }
 
+  private getJourneysAfterTransfer(
+    node: TransferPatternNode,
+    time: Time,
+    transfers: Transfer[],
+    transfer: Transfer
+  ): JourneyLegs[] {
     // every leg of a node arrives at the station the node is, so the interchange added on arriving
     // is the node's own rather than one looked up by where the leg ended
-    time += transfer.duration + node.interchange;
+    const arrival = time + transfer.duration + node.interchange;
 
-    return node.children.flatMap(n => this.getJourneysFromNode(n, time, [...transfers, transfer]));
+    return node.children.flatMap(n => this.getJourneysFromNode(n, arrival, [...transfers, transfer]));
   }
 
   private getJourneysFromChildNode(

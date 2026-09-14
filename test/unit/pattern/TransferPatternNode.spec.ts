@@ -44,6 +44,24 @@ describe("TransferPatternNode", () => {
     expect(journey1[1]).toEqual(transfer1);
   });
 
+  it("walks where the next timetable leg arrives later than walking would", () => {
+    const lastTrain = tt("B", "C", 2300, 2310);
+    const node = new TransferPatternNode([lastTrain], [transfer1], [], 0);
+
+    const [journey1] = node.getJourneys([timetable1], 1015);
+
+    expect(journey1[1]).toEqual(transfer1);
+  });
+
+  it("takes the timetable leg where it arrives before walking would", () => {
+    const walk = tr("B", "C", 30);
+    const node = new TransferPatternNode([timetable2], [walk], [], 0);
+
+    const [journey1] = node.getJourneys([timetable1], 1015);
+
+    expect(journey1[1]).toEqual(timetable2);
+  });
+
   it("returns a footpath that has not opened yet when it later does", () => {
     const transfer = tr("B", "C", 10, 1000, 1200);
     const node = new TransferPatternNode([], [transfer], [], 0);
