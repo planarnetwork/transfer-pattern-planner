@@ -1,6 +1,4 @@
 export * from "./ConnectionScanPatternQuery.js";
-export * from "./ConnectionScanResults.js";
-export * from "./PatternIndex.js";
 export * from "./PatternQuery.js";
 export * from "./SharedTimetable.js";
 export * from "./StationPatternFiles.js";

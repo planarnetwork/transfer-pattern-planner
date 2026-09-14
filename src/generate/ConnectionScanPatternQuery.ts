@@ -8,11 +8,7 @@ import { ConnectionScanResults } from "./ConnectionScanResults.js";
 import type { PatternQuery } from "./PatternQuery.js";
 
 /**
- * Uses the connection scan algorithm to find the patterns of a whole day from one station.
- *
- * Each scan finds the soonest every station is reached in each number of legs from a departure time,
- * and the next starts a second after the earliest of the journeys it found departs, until the day is
- * done.
+ * Uses the connection scan algorithm to perform full day range queries and collect the patterns they find.
  */
 export class ConnectionScanPatternQuery implements PatternQuery {
   private readonly ONE_DAY = 24 * 60 * 60;
@@ -48,8 +44,7 @@ export class ConnectionScanPatternQuery implements PatternQuery {
   }
 
   /**
-   * The connection scan's own scan, without a destination to stop at: a pattern is wanted to every
-   * station, in every number of legs, so every connection after the departure time is read.
+   * ConnectionScanAlgorithm.scan, but reading to the end: it stops at once without destinations
    */
   private scan(origin: StopID, departureTime: Time, running: Uint8Array): ConnectionIndex {
     const { connections } = this.gtfs;
@@ -72,10 +67,6 @@ export class ConnectionScanPatternQuery implements PatternQuery {
     return results.getConnectionIndex();
   }
 
-  /**
-   * Every footpath out of the station is taken before any is walked on from, as the connection scan
-   * does
-   */
   private scanTransfers(results: ScanResults, origin: StopIdx, legs: number): void {
     const { transfers } = this.gtfs;
     const start = transfers.offsets[origin];

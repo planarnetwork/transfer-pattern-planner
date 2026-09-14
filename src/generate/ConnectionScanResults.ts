@@ -2,19 +2,14 @@ import type { StopID, Time } from "@gb-transit/gtfs-loader";
 import {
   type ConnectionIndex, type GtfsData, isTransferConnection, NO_CONNECTION, type StopIdx, transferOf
 } from "connection-scan-algorithm";
-import { PatternIndex } from "./PatternIndex.js";
+import { StringResults } from "./StringResults.js";
 
 /**
- * Collects the labels of each connection scan into the patterns they are written as.
- *
- * A station has a label for each number of legs it was reached soonest in. Each label that is sooner
- * than the one of fewer legs before it is a journey no other beats on both arrival and legs, and each
- * is a pattern: the stations its legs are boarded at, walked back through the labels as the
- * connection scan's JourneyFactory does.
+ * Collects the labels of each connection scan into patterns. A label sooner than the one of a leg
+ * fewer is a journey no other beats on both arrival and legs.
  */
 export class ConnectionScanResults {
-  private readonly patterns = new PatternIndex();
-  /** Reused by every path, since a path is filed as soon as it has been walked */
+  private readonly patterns = new StringResults();
   private readonly changePoints: StopID[] = [];
 
   constructor(
@@ -22,8 +17,7 @@ export class ConnectionScanResults {
   ) {}
 
   /**
-   * File the pattern of every label the scan set, and return the time the next scan of the day should
-   * start from
+   * File the pattern of every label, and return the time the next scan of the day should start from
    */
   public add(index: ConnectionIndex): Time {
     const { levels, boardingTimes, connections } = index;
@@ -48,19 +42,13 @@ export class ConnectionScanResults {
     return nextDepartureTime;
   }
 
-  /**
-   * The lines these patterns are written as, one per pattern
-   */
   public lines(): string[] {
     return this.patterns.lines();
   }
 
   /**
-   * Walk back through the labels from one of the station's, file the stations its legs are boarded at,
-   * and return the time the journey left the first of them.
-   *
-   * Undefined where the path is only footpaths, which has no departure to take the day's next scan
-   * from.
+   * Walk back through the labels as JourneyFactory does, file the stations each leg is boarded at, and
+   * return when the journey departs, or undefined if it is only footpaths.
    */
   private record(index: ConnectionIndex, finalDestination: StopIdx, finalLabel: number): Time | undefined {
     const { connections, transfers, interchange, stopTable } = this.gtfs;
@@ -71,7 +59,6 @@ export class ConnectionScanResults {
     let departureTime: Time | undefined;
     let length = 0;
 
-    // no journey has more legs than there are labels, so a timetable that loops cannot hang a worker
     while (index.connections[label] !== NO_CONNECTION && length < index.connections.length) {
       const connection = index.connections[label];
 
@@ -87,8 +74,6 @@ export class ConnectionScanResults {
           label = this.labelInTime(index, station, setOff, 1);
         }
 
-        // a footpath after the last trip does not move the departure, and one before the first is
-        // left in time to reach it
         if (departureTime !== undefined) {
           departureTime -= transfers.duration[t] + interchange[station];
         }
@@ -102,13 +87,13 @@ export class ConnectionScanResults {
       this.changePoints[length++] = stopTable.nameOf(station);
     }
 
-    this.patterns.add(this.changePoints, length, stopTable.nameOf(finalDestination));
+    this.patterns.file(this.changePoints, length, stopTable.nameOf(finalDestination));
 
     return departureTime;
   }
 
   /**
-   * The label of the fewest legs, from those given, the station can be boarded at by the time
+   * The label of the fewest legs the station can be boarded at by the time
    */
   private labelInTime(index: ConnectionIndex, station: StopIdx, time: Time, fewestLegs: number): number {
     const end = (station + 1) * index.levels;

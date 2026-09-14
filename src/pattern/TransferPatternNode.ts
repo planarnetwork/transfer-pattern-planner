@@ -36,14 +36,13 @@ export class TransferPatternNode {
 
     const arrivalTime = isTransfer(leg)
       ? departureTime + leg.duration + this.interchange
-      : arrivalOf(leg) + this.interchange;
+      : leg.stopTimes[leg.stopTimes.length - 1].arrivalTime + this.interchange;
 
     return this.children.flatMap(p => p.getJourneys([...legs, leg], arrivalTime));
   }
 
   /**
-   * The next train is usually sooner than walking, but not always: the last train of the day
-   * between two stations a footpath also joins is hours later than the walk.
+   * The next timetable leg, unless walking arrives sooner
    */
   private findLeg(departureTime: Time): AnyLeg | null {
     const leg = this.findTimetableLeg(departureTime);
@@ -73,19 +72,10 @@ export class TransferPatternNode {
    * later time, so there is no cursor to move: the list, which is short, is scanned in full every time.
    */
   public findTransfer(departureTime: Time): Transfer | null {
-    for (const transfer of this.transfers) {
-      if (transfer.startTime <= departureTime && transfer.endTime >= departureTime) {
-        return transfer;
-      }
-    }
-
-    return null;
+    return this.transfers.find(t => t.startTime <= departureTime && t.endTime >= departureTime) ?? null;
   }
 }
 
-/**
- * When a timetable leg arrives at the station it runs to
- */
 export function arrivalOf(leg: TimetableLeg): Time {
   return leg.stopTimes[leg.stopTimes.length - 1].arrivalTime;
 }

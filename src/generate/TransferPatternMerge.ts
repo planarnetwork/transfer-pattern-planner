@@ -62,8 +62,7 @@ export class TransferPatternMerge {
   }
 
   /**
-   * Told roughly how much is coming, brotli picks settings for a file that size rather than for a
-   * stream of unknown length, and the file comes out a fifth smaller
+   * Given a size hint, brotli compresses a fifth smaller than as a stream of unknown length
    */
   private compressor(output: string, sizeHint: number): zlib.Gzip | zlib.BrotliCompress {
     return compressionFor(output) === "gzip"
@@ -78,14 +77,13 @@ export class TransferPatternMerge {
 
   /**
    * Deal every line into the file for the station it starts from, and return those stations in
-   * order, which is the order their patterns belong in, with how many bytes were dealt.
+   * order, which is the order their patterns belong in.
    *
    * A bucket is the whole station rather than its first letter. Every line in it begins with that
    * station, so the buckets still concatenate in order, but a national feed spreads over 2,786 of
    * them rather than 26 - and it is one bucket at a time that patternsIn holds in memory.
    *
-   * A worker's file is read whole and each bucket's share of it written at once. A stream written a
-   * line at a time spends far longer on the writes than on anything written.
+   * Lines are written a bucket at a time: writing them one at a time is far slower than the writing.
    */
   private async deal(inputs: string[]): Promise<DealtPatterns> {
     const files = new Map<string, fs.WriteStream>();
@@ -152,7 +150,7 @@ export class TransferPatternMerge {
   }
 
   /**
-   * Write the lines at once, waiting only where the stream has fallen far enough behind to say so
+   * Write the lines, waiting only where the stream has fallen far enough behind to say so
    */
   private async write(stream: Writable, lines: string[]): Promise<void> {
     if (lines.length > 0 && !stream.write(`${lines.join("\n")}\n`)) {
@@ -174,8 +172,6 @@ export interface MergedPatterns {
 }
 
 interface DealtPatterns {
-  /** The leading stations of the patterns, in order */
   buckets: string[];
-  /** How much was dealt, which is roughly how much will be compressed */
   bytes: number;
 }

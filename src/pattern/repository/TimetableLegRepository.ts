@@ -85,10 +85,8 @@ export class TimetableLegRepository {
   /**
    * The calls between the two stations. The stop times are the feed's own, so a leg between two
    * stations still says which platform it uses at each end.
-   *
-   * A trip that loops calls at a station more than once, so the leg is boarded at the last call at
-   * the origin before the first call at the destination: boarding at an earlier one would have the
-   * passenger ride the whole loop, and leave before anyone arriving in time for the later call.
+   * A trip that loops can call at the origin twice, so it is boarded at the last call before the
+   * destination.
    */
   private getStopTimes(trip: TripCalls, origin: StopIdx, destination: StopIdx): StopTime[] {
     let boarded = -1;

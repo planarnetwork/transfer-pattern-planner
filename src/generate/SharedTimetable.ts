@@ -1,39 +1,30 @@
 import { getDateNumber, getDayOfWeek, Service } from "@gb-transit/gtfs-loader";
-import type { DateNumber, StopID, Trip, TripID } from "@gb-transit/gtfs-loader";
+import type { DateNumber, StopID, Trip } from "@gb-transit/gtfs-loader";
 import { type Connections, type GtfsData, StopTable, TripCalendar } from "connection-scan-algorithm";
 
 /**
- * A connection scan timetable for one date, in a form that can be posted to a worker.
- *
- * A GtfsData holds the feed's trips and calendars as objects, which a worker would be given a copy
- * of, and a pattern needs none of them: only the connections that run on the date, and the footpaths
- * and interchange between them. Those are all typed arrays, and they are allocated on
- * SharedArrayBuffers where there are any, so every worker reads the same bytes.
+ * The connections running on one date, and the footpaths and interchange between them, on
+ * SharedArrayBuffers so every worker reads the same timetable rather than a copy of the feed.
  */
 export interface SharedTimetable {
   date: DateNumber;
-  /** the connections running on the date, their trips numbered among those that run */
+  /** trips are numbered among those that run on the date */
   connections: Connections;
   footpaths: Pick<GtfsData["transfers"], "offsets" | "origin" | "destination" | "duration">;
   interchange: Int32Array;
   /** the code of each station, by index */
   stations: StopID[];
-  /** the feed's id of each trip, by index */
-  tripIds: TripID[];
+  trips: number;
 }
 
-/**
- * The connections that run on the date, and what a scan of them reads, ready to be posted to a
- * worker
- */
 export function shareTimetable(gtfs: GtfsData, dateObj: Date): SharedTimetable {
   const date = getDateNumber(dateObj);
   const running = gtfs.calendar.runningOn(date, getDayOfWeek(date));
   const { connections, transfers } = gtfs;
   const tripIndex = new Int32Array(gtfs.trips.length).fill(-1);
-  const tripIds: TripID[] = [];
 
   let length = 0;
+  let trips = 0;
 
   for (let c = 0; c < connections.length; c++) {
     const trip = connections.trip[c];
@@ -42,8 +33,7 @@ export function shareTimetable(gtfs: GtfsData, dateObj: Date): SharedTimetable {
       length++;
 
       if (tripIndex[trip] === -1) {
-        tripIndex[trip] = tripIds.length;
-        tripIds.push(gtfs.trips[trip].tripId);
+        tripIndex[trip] = trips++;
       }
     }
   }
@@ -83,20 +73,18 @@ export function shareTimetable(gtfs: GtfsData, dateObj: Date): SharedTimetable {
     },
     interchange: share(gtfs.interchange),
     stations: Array.from({ length: gtfs.stopTable.size }, (_, station) => gtfs.stopTable.nameOf(station)),
-    tripIds
+    trips
   };
 }
 
 /**
- * The timetable a connection scan reads, from one that was shared.
- *
- * Its trips carry no stop times, since nothing that makes a pattern reads them, and each runs on the
- * shared date and no other, which is all the calendar is asked.
+ * The timetable a connection scan reads, from one that was shared. Its trips have no stop times,
+ * which a pattern does not need, and run on the shared date alone.
  */
 export function readSharedTimetable(shared: SharedTimetable): GtfsData {
   const stopTable = new StopTable();
   const service = new Service(shared.date, shared.date, { 0: true, 1: true, 2: true, 3: true, 4: true, 5: true, 6: true }, {});
-  const trips: Trip[] = shared.tripIds.map(tripId => ({ tripId, serviceId: "", stopTimes: [], service }));
+  const trips: Trip[] = Array.from({ length: shared.trips }, () => ({ tripId: "", serviceId: "", stopTimes: [], service }));
 
   for (const station of shared.stations) {
     stopTable.intern(station);
