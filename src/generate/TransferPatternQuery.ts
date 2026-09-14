@@ -2,12 +2,13 @@ import { getDateNumber } from "@gb-transit/gtfs-loader";
 import type { StopID } from "@gb-transit/gtfs-loader";
 import { RaptorAlgorithm, checkCovered } from "raptor-journey-planner";
 import type { Network } from "raptor-journey-planner";
+import type { PatternQuery } from "./PatternQuery.js";
 import type { StringResults } from "./StringResults.js";
 
 /**
  * Uses the Raptor algorithm to perform full day range queries and collect the patterns they find.
  */
-export class TransferPatternQuery {
+export class TransferPatternQuery implements PatternQuery {
   private readonly ONE_DAY = 24 * 60 * 60;
 
   private readonly raptor: RaptorAlgorithm;

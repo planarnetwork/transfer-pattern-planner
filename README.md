@@ -35,8 +35,9 @@ patterns are both read from whatever the environment can give bytes from, and de
 bundler follows from the root resolves a node module.
 
 Reading the feed is [`@gb-transit/gtfs-loader`](https://www.npmjs.com/package/@gb-transit/gtfs-loader)'s
-job. Scanning one to find patterns is [raptor](https://github.com/planarnetwork/raptor)'s, and it is
-only reached from `transfer-pattern-planner/generate`, so a bundle that reads patterns does not
+job. Scanning one to find patterns is [raptor](https://github.com/planarnetwork/raptor)'s, or the
+[connection scan algorithm](https://github.com/planarnetwork/connection-scan-algorithm)'s, and both
+are only reached from `transfer-pattern-planner/generate`, so a bundle that reads patterns does not
 carry a journey planner it never calls.
 
 ### Stations and platforms
@@ -67,6 +68,24 @@ npm run patterns gtfs.zip 2026-09-15 transfer-patterns.br
 That plans a whole day from every station in the feed, on a pool of workers sharing one timetable.
 `WORKERS` sets how many threads to use, and defaults to two fewer than the machine has cores.
 
+Raptor finds them by default. `--algorithm=csa` uses the connection scan algorithm instead:
+
+```
+npm run patterns gtfs.zip 2026-09-15 transfer-patterns.br --algorithm=csa
+```
+
+Both find, from each departure time, every journey that no other arrives sooner than in as few legs:
+raptor a round per trip taken, the connection scan a label per number of legs at each station. On
+the GB rail feed for 15 September 2026, planning 3,018 stations on 126 workers:
+
+|                  | raptor       | csa          |
+|------------------|--------------|--------------|
+| planning         | 26.5-30.4s   | 17.7s        |
+| patterns         | 34.6 million | 36.2 million |
+| file             | 32.6MB       | 33.5MB       |
+
+The merge that follows takes about four minutes either way.
+
 The pieces it is built from are published too, for a caller that wants to arrange the work
 differently - over several days, or split across machines, which is what the nightly build of the
 GB rail feed does:
@@ -87,6 +106,17 @@ for (const station of new Set(network.stations.values())) {
 
 await part.close();
 await new TransferPatternMerge(workDir).merge(["part.gz"], "transfer-patterns.br");
+```
+
+The connection scan's version is the same shape, given the scan's timetable instead:
+
+```javascript
+const {loadGtfs} = require("connection-scan-algorithm");
+const {ConnectionScanPatternQuery} = require("transfer-pattern-planner/generate");
+
+const query = new ConnectionScanPatternQuery(await loadGtfs(fs.createReadStream("gtfs.zip")));
+
+await part.store(query.plan(station, date));
 ```
 
 `plan` returns the lines a station's patterns are written as. A `TransferPatternFile` collects them

@@ -84,7 +84,8 @@
     "vitest": "^5.0.0"
   },
   "dependencies": {
-    "@gb-transit/gtfs-loader": "^1.1.0",
+    "@gb-transit/gtfs-loader": "^1.5.0",
+    "connection-scan-algorithm": "^3.1.0",
     "raptor-journey-planner": "^5.0.1"
   }
 }

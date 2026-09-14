@@ -136,6 +136,10 @@ function feed(overrides: Partial<GTFSFeed> = {}): GTFSFeed {
     transfers: {},
     links: [],
     interchange: {},
+    routes: {},
+    agencies: {},
+    areas: {},
+    shapes: {},
     stops: {
       NRW: station("NRW"),
       NRW1: platform("NRW1", "NRW"),

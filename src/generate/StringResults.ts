@@ -1,19 +1,13 @@
 import type { StopID, Time } from "@gb-transit/gtfs-loader";
 import { isTransfer, originIndexOf } from "raptor-journey-planner";
 import type { Connection, ConnectionIndex, Network, StopIdx } from "raptor-journey-planner";
+import { PatternIndex } from "./PatternIndex.js";
 
 /**
- * Store the kConnection results as an index where the key is the journey origin and destination and
- * the value is a Set of change points.
- *
- * A day of scans from one station finds the same patterns over and over: on a national feed some
- * two million paths turn into a few thousand of them. Naming a path costs more than discovering it
- * has been seen before, so the change points are collected into a tree and only turned into
- * strings by finalize, once each.
+ * Collects the paths of each Raptor scan into the patterns they are written as.
  */
 export class StringResults {
-  /** Origin stop, then destination stop, then the change points between them */
-  private readonly journeys = new Map<StopID, Map<StopID, PatternNode>>();
+  private readonly patterns = new PatternIndex();
   /** Reused by every path, since a path is filed as soon as it has been walked */
   private readonly changePoints: StopID[] = [];
 
@@ -41,44 +35,10 @@ export class StringResults {
   }
 
   /**
-   * The lines these patterns are written as, one per pattern: the stations it calls at, three
-   * characters each, with nothing between them.
-   *
-   * The two ends are written in the order they are keyed in, which is alphabetical rather than the
-   * order anyone travelled: a pattern covers both directions, so it is one line either way.
+   * The lines these patterns are written as, one per pattern
    */
   public lines(): string[] {
-    const lines: string[] = [];
-
-    for (const [origin, destinations] of this.journeys) {
-      for (const [destination, pattern] of destinations) {
-        this.write(pattern, origin, destination, [], lines);
-      }
-    }
-
-    return lines;
-  }
-
-  /**
-   * Write every pattern at or below this node. Naming a path costs more than finding it again, so
-   * the change points are collected into a tree and only written out here, once each.
-   */
-  private write(
-    node: PatternNode,
-    origin: StopID,
-    destination: StopID,
-    changePoints: StopID[],
-    into: string[]
-  ): void {
-    if (node.end) {
-      into.push(origin + changePoints.join("") + destination);
-    }
-
-    for (const [stop, child] of node.children) {
-      changePoints.push(stop);
-      this.write(child, origin, destination, changePoints, into);
-      changePoints.pop();
-    }
+    return this.patterns.lines();
   }
 
   /**
@@ -127,54 +87,9 @@ export class StringResults {
       return undefined;
     }
 
-    this.file(changePoints, length, network.stopIds[finalDestination]);
+    this.patterns.add(changePoints, length, network.stopIds[finalDestination]);
 
     return departureTime;
-  }
-
-  /**
-   * File a path under the pair of stops it runs between.
-   *
-   * changePoints holds the stops it was boarded at, last first, so the stop it departed from is at
-   * the end. The pair is ordered by stop id, as the key is, and the tree is descended in the order
-   * that key will name the change points in, so nothing has to be reversed later.
-   */
-  private file(changePoints: StopID[], length: number, arrival: StopID): void {
-    const departure = changePoints[length - 1];
-    const forwards = departure <= arrival;
-
-    let node = this.patternsBetween(forwards ? departure : arrival, forwards ? arrival : departure);
-
-    if (forwards) {
-      for (let i = length - 2; i >= 0; i--) {
-        node = descend(node, changePoints[i]);
-      }
-    }
-    else {
-      for (let i = 0; i <= length - 2; i++) {
-        node = descend(node, changePoints[i]);
-      }
-    }
-
-    node.end = true;
-  }
-
-  private patternsBetween(from: StopID, to: StopID): PatternNode {
-    let destinations = this.journeys.get(from);
-
-    if (destinations === undefined) {
-      destinations = new Map();
-      this.journeys.set(from, destinations);
-    }
-
-    let pattern = destinations.get(to);
-
-    if (pattern === undefined) {
-      pattern = newNode();
-      destinations.set(to, pattern);
-    }
-
-    return pattern;
   }
 
 }
@@ -192,28 +107,4 @@ function departureOf(network: Network, [route, trip, from]: Connection): Time {
   const stopsInRoute = stopOffsets[route + 1] - stopOffsets[route];
 
   return departures[stopTimesBase[route] + (trip - tripOffsets[route]) * stopsInRoute + from];
-}
-
-function descend(node: PatternNode, stop: StopID): PatternNode {
-  let child = node.children.get(stop);
-
-  if (child === undefined) {
-    child = newNode();
-    node.children.set(stop, child);
-  }
-
-  return child;
-}
-
-function newNode(): PatternNode {
-  return { children: new Map(), end: false };
-}
-
-/**
- * A change point of a pattern and the change points that may follow it. `end` marks a pattern that
- * stops here, which a longer one may also run through.
- */
-interface PatternNode {
-  children: Map<StopID, PatternNode>;
-  end: boolean;
 }
