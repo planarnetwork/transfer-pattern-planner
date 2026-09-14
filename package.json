@@ -60,7 +60,9 @@
     "start": "tsx src/cli/plan.ts",
     "patterns": "NODE_OPTIONS='--max-old-space-size=6000' tsx src/cli/transfer-patterns.ts",
     "pattern-files": "NODE_OPTIONS='--max-old-space-size=6000' tsx src/cli/pattern-files.ts",
-    "perf": "NODE_OPTIONS=--max-old-space-size=4000 tsx test/performance.ts"
+    "perf": "NODE_OPTIONS=--max-old-space-size=4000 tsx test/performance.ts",
+    "changeset": "changeset",
+    "release": "changeset publish"
   },
   "keywords": [
     "Journey",
@@ -76,6 +78,7 @@
   "homepage": "https://github.com/planarnetwork/transfer-pattern-planner#readme",
   "devDependencies": {
     "@biomejs/biome": "2.5.12",
+    "@changesets/cli": "^3.0.3",
     "@types/node": "26.5.0",
     "@types/progress": "2.0.7",
     "progress": "2.0.3",
