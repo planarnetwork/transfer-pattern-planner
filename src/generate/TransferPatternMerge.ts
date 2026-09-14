@@ -1,12 +1,14 @@
 import { once } from "node:events";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import * as readline from "node:readline";
 import type { Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
+import { promisify } from "node:util";
 import * as zlib from "node:zlib";
 import { FrontCoder } from "../pattern/format/FrontCoder.js";
 import { BROTLI_QUALITY, CODE_WIDTH, compressionFor, workFileName } from "../pattern/format/PatternFormat.js";
+
+const gunzip = promisify(zlib.gunzip);
 
 /**
  * Folds the files the workers wrote into one.
@@ -32,8 +34,8 @@ export class TransferPatternMerge {
    * brotli and is what a browser can decompress, and anything else is brotli.
    */
   public async merge(inputs: string[], output: string): Promise<MergedPatterns> {
-    const buckets = await this.deal(inputs);
-    const compressed = this.compressor(output);
+    const { buckets, bytes } = await this.deal(inputs);
+    const compressed = this.compressor(output, bytes);
     const written = pipeline(compressed, fs.createWriteStream(output));
 
     let total = 0;
@@ -46,9 +48,7 @@ export class TransferPatternMerge {
       // a coder per bucket: the buckets are written in order, but each starts a run of its own
       const coder = new FrontCoder();
 
-      for (const line of patterns) {
-        await this.write(compressed, coder.code(line));
-      }
+      await this.write(compressed, patterns.map(line => coder.code(line)));
     }
 
     compressed.end();
@@ -61,10 +61,18 @@ export class TransferPatternMerge {
     return { patterns: total, bytes: (await fs.promises.stat(output)).size };
   }
 
-  private compressor(output: string): zlib.Gzip | zlib.BrotliCompress {
+  /**
+   * Given a size hint, brotli compresses a fifth smaller than as a stream of unknown length
+   */
+  private compressor(output: string, sizeHint: number): zlib.Gzip | zlib.BrotliCompress {
     return compressionFor(output) === "gzip"
       ? zlib.createGzip()
-      : zlib.createBrotliCompress({ params: { [zlib.constants.BROTLI_PARAM_QUALITY]: BROTLI_QUALITY } });
+      : zlib.createBrotliCompress({
+        params: {
+          [zlib.constants.BROTLI_PARAM_QUALITY]: BROTLI_QUALITY,
+          [zlib.constants.BROTLI_PARAM_SIZE_HINT]: Math.min(sizeHint, 0xffffffff)
+        }
+      });
   }
 
   /**
@@ -74,23 +82,37 @@ export class TransferPatternMerge {
    * A bucket is the whole station rather than its first letter. Every line in it begins with that
    * station, so the buckets still concatenate in order, but a national feed spreads over 2,786 of
    * them rather than 26 - and it is one bucket at a time that patternsIn holds in memory.
+   *
+   * Lines are written a bucket at a time: writing them one at a time is far slower than the writing.
    */
-  private async deal(inputs: string[]): Promise<string[]> {
+  private async deal(inputs: string[]): Promise<DealtPatterns> {
     const files = new Map<string, fs.WriteStream>();
 
-    for (const input of inputs) {
-      const lines = readline.createInterface({
-        input: fs.createReadStream(input).pipe(zlib.createGunzip()),
-        crlfDelay: Number.POSITIVE_INFINITY
-      });
+    let bytes = 0;
 
-      for await (const line of lines) {
+    for (const input of inputs) {
+      const text = (await gunzip(await fs.promises.readFile(input))).toString();
+      const lines = new Map<string, string[]>();
+
+      bytes += text.length;
+
+      for (const line of text.split("\n")) {
         if (line === "") {
           continue;
         }
 
         const bucket = line.slice(0, CODE_WIDTH);
+        const bucketLines = lines.get(bucket);
 
+        if (bucketLines === undefined) {
+          lines.set(bucket, [line]);
+        }
+        else {
+          bucketLines.push(line);
+        }
+      }
+
+      for (const [bucket, bucketLines] of lines) {
         let file = files.get(bucket);
 
         if (file === undefined) {
@@ -98,7 +120,7 @@ export class TransferPatternMerge {
           files.set(bucket, file);
         }
 
-        await this.write(file, line);
+        await this.write(file, bucketLines);
       }
     }
 
@@ -106,7 +128,7 @@ export class TransferPatternMerge {
       new Promise<void>(resolve => file.end(resolve))
     ));
 
-    return [...files.keys()].sort();
+    return { buckets: [...files.keys()].sort(), bytes };
   }
 
   /**
@@ -117,12 +139,8 @@ export class TransferPatternMerge {
    */
   private async patternsIn(bucket: string): Promise<string[]> {
     const patterns = new Set<string>();
-    const lines = readline.createInterface({
-      input: fs.createReadStream(this.bucketFile(bucket)),
-      crlfDelay: Number.POSITIVE_INFINITY
-    });
 
-    for await (const line of lines) {
+    for (const line of (await fs.promises.readFile(this.bucketFile(bucket), "utf8")).split("\n")) {
       if (line !== "") {
         patterns.add(line);
       }
@@ -132,10 +150,10 @@ export class TransferPatternMerge {
   }
 
   /**
-   * Write a line, waiting only where the stream has fallen far enough behind to say so
+   * Write the lines, waiting only where the stream has fallen far enough behind to say so
    */
-  private async write(stream: Writable, line: string): Promise<void> {
-    if (!stream.write(`${line}\n`)) {
+  private async write(stream: Writable, lines: string[]): Promise<void> {
+    if (lines.length > 0 && !stream.write(`${lines.join("\n")}\n`)) {
       await once(stream, "drain");
     }
   }
@@ -150,5 +168,10 @@ export interface MergedPatterns {
   /** How many distinct patterns the file holds */
   patterns: number;
   /** How large it is once compressed */
+  bytes: number;
+}
+
+interface DealtPatterns {
+  buckets: string[];
   bytes: number;
 }

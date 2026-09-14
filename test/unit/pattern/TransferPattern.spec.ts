@@ -95,4 +95,29 @@ describe("TransferPattern", () => {
     ]);
   });
 
+  it("walks from the origin where it reaches the next station before the first timetable leg", () => {
+    const child2 = new TransferPatternNode([tt("B", "C", 100, 150), tt("B", "C", 2400, 2450)], [], [], 0);
+    const child1 = new TransferPatternNode([tt("A", "B", 2300, 2310)], [tr("A", "B", 60)], [child2], 0);
+
+    const pattern = new TransferPattern(at(stops, "A"), [child1]);
+    const journeys = pattern.getJourneys(new Map([[at(stops, "A"), 10]]));
+
+    // after a walk every later leg is a journey too, as it is after any footpath from the origin
+    expect(journeys).toEqual([
+      [tr("A", "B", 60), tt("B", "C", 100, 150)],
+      [tr("A", "B", 60), tt("B", "C", 2400, 2450)],
+      [tt("A", "B", 2300, 2310), tt("B", "C", 2400, 2450)]
+    ]);
+  });
+
+  it("does not walk from the origin where a timetable leg reaches the next station first", () => {
+    const child2 = new TransferPatternNode([tt("B", "C", 100, 150)], [], [], 0);
+    const child1 = new TransferPatternNode([tt("A", "B", 20, 30)], [tr("A", "B", 60)], [child2], 0);
+
+    const pattern = new TransferPattern(at(stops, "A"), [child1]);
+    const journeys = pattern.getJourneys(new Map([[at(stops, "A"), 10]]));
+
+    expect(journeys).toEqual([[tt("A", "B", 20, 30), tt("B", "C", 100, 150)]]);
+  });
+
 });

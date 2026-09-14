@@ -54,6 +54,23 @@ describe("TimetableLegRepository", () => {
     expect(leg2.trip).toBe(t1.trip);
   });
 
+  it("boards a trip that loops at its last call at the origin before the destination", () => {
+    const stops = stopsFor();
+    const t = calls(
+      stops,
+      st("A", 1000),
+      st("B", 1010),
+      st("C", 1020),
+      st("A", 1030),
+      st("D", 1040),
+    );
+
+    const repository = new TimetableLegRepository(createTripIndex([t]), stops);
+    const legs = repository.getLegs(at(stops, "A"), at(stops, "D"), 1, 0);
+
+    expect(legs.map(leg => leg.stopTimes.map(s => s.departureTime))).toEqual([[1030, 1040]]);
+  });
+
   it("keeps the platform of each call in the leg's stop times", () => {
     const stops = stopsFor("A", "B");
     const t: TripCalls = {
@@ -93,7 +110,10 @@ function add(index: TripIndex, origin: StopIdx, destination: StopIdx, trip: Trip
   const byDestination = index[origin] ?? new Map();
   const trips = byDestination.get(destination) ?? [];
 
-  trips.push(trip);
+  if (trips[trips.length - 1] !== trip) {
+    trips.push(trip);
+  }
+
   byDestination.set(destination, trips);
   index[origin] = byDestination;
 }

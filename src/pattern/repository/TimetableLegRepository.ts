@@ -85,13 +85,18 @@ export class TimetableLegRepository {
   /**
    * The calls between the two stations. The stop times are the feed's own, so a leg between two
    * stations still says which platform it uses at each end.
+   * A trip that loops can call at the origin twice, so it is boarded at the last call before the
+   * destination.
    */
   private getStopTimes(trip: TripCalls, origin: StopIdx, destination: StopIdx): StopTime[] {
-    const i = trip.stations.indexOf(origin);
+    let boarded = -1;
 
-    for (let j = i + 1; j < trip.stations.length; j++) {
-      if (trip.stations[j] === destination) {
-        return trip.calls.slice(i, j + 1);
+    for (let i = 0; i < trip.stations.length; i++) {
+      if (trip.stations[i] === origin && trip.calls[i].pickUp) {
+        boarded = i;
+      }
+      else if (boarded !== -1 && trip.stations[i] === destination && trip.calls[i].dropOff) {
+        return trip.calls.slice(boarded, i + 1);
       }
     }
 

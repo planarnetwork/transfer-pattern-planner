@@ -139,7 +139,7 @@ export class StringResults {
    * the end. The pair is ordered by stop id, as the key is, and the tree is descended in the order
    * that key will name the change points in, so nothing has to be reversed later.
    */
-  private file(changePoints: StopID[], length: number, arrival: StopID): void {
+  public file(changePoints: StopID[], length: number, arrival: StopID): void {
     const departure = changePoints[length - 1];
     const forwards = departure <= arrival;
 

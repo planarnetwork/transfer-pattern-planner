@@ -41,8 +41,18 @@ export class TransferPatternNode {
     return this.children.flatMap(p => p.getJourneys([...legs, leg], arrivalTime));
   }
 
+  /**
+   * The next timetable leg, unless walking arrives sooner
+   */
   private findLeg(departureTime: Time): AnyLeg | null {
-    return this.findTimetableLeg(departureTime) || this.findTransfer(departureTime);
+    const leg = this.findTimetableLeg(departureTime);
+    const transfer = this.findTransfer(departureTime);
+
+    if (transfer === null || (leg !== null && arrivalOf(leg) <= departureTime + transfer.duration)) {
+      return leg;
+    }
+
+    return transfer;
   }
 
   private findTimetableLeg(departureTime: Time): TimetableLeg | null {
@@ -64,4 +74,8 @@ export class TransferPatternNode {
   public findTransfer(departureTime: Time): Transfer | null {
     return this.transfers.find(t => t.startTime <= departureTime && t.endTime >= departureTime) ?? null;
   }
+}
+
+export function arrivalOf(leg: TimetableLeg): Time {
+  return leg.stopTimes[leg.stopTimes.length - 1].arrivalTime;
 }

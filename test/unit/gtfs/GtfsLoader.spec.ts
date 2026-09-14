@@ -53,6 +53,16 @@ describe("toGtfsData", () => {
     expect(stations(gtfs, stops, "NRW", "LST")).toEqual(["NRW", "LST"]);
   });
 
+  it("indexes a trip that calls at a station twice once between it and each other station", () => {
+    const stops = new StopTable();
+    const gtfs = toGtfsData(feed({
+      trips: [trip(st("NRW1", 1000), st("DIS2", 1100), st("NRW2", 1200), st("LST8", 1300))]
+    }), stops);
+
+    expect(tripsBetween(gtfs, stops, "NRW", "LST")?.length).toBe(1);
+    expect(tripsBetween(gtfs, stops, "NRW", "DIS")?.length).toBe(1);
+  });
+
   it("does not index a passing point, which a passenger cannot use", () => {
     const passing = { ...st("DIS2", 1100), pickUp: false, dropOff: false };
 
@@ -136,6 +146,10 @@ function feed(overrides: Partial<GTFSFeed> = {}): GTFSFeed {
     transfers: {},
     links: [],
     interchange: {},
+    routes: {},
+    agencies: {},
+    areas: {},
+    shapes: {},
     stops: {
       NRW: station("NRW"),
       NRW1: platform("NRW1", "NRW"),

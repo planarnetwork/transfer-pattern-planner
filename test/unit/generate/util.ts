@@ -30,6 +30,10 @@ export function feed(
     links,
     interchange,
     stops,
+    routes: {},
+    agencies: {},
+    areas: {},
+    shapes: {},
     feedInfo: { startDate: 20180101, endDate: 20201231 }
   };
 }

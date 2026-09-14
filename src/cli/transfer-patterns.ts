@@ -1,17 +1,21 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { parseArgs } from "node:util";
 import { Worker } from "node:worker_threads";
 import { CSVParser, entityTypeOf, loadGTFS, readZip, toChunks } from "@gb-transit/gtfs-loader";
 import type { StopID } from "@gb-transit/gtfs-loader";
+import { loadGtfs } from "connection-scan-algorithm";
 import ProgressBar from "progress";
 import { createNetwork } from "raptor-journey-planner";
+import { shareTimetable } from "../generate/SharedTimetable.js";
 import { TransferPatternMerge } from "../generate/TransferPatternMerge.js";
 import { checkCodeWidths } from "../pattern/format/PatternFormat.js";
+import type { Algorithm, WorkerInput, WorkerTimetable } from "./transfer-pattern-worker.js";
 
 /**
- * Whether the timetable can be shared with a worker rather than copied to it. Raptor allocates it
- * on SharedArrayBuffers where they exist, and it does not say so itself.
+ * Whether the timetable can be shared with a worker rather than copied to it. Both algorithms'
+ * timetables are allocated on SharedArrayBuffers where they exist.
  */
 const canShareMemory = typeof SharedArrayBuffer !== "undefined";
 
@@ -29,18 +33,13 @@ const WORKER = new URL("transfer-pattern-worker.ts", import.meta.url);
  * from is hundreds of megabytes and is only needed to name a journey's stop times, which a pattern
  * does not carry.
  */
-async function run(filename: string, dateString: string, output: string) {
+async function run(filename: string, dateString: string, output: string, algorithm: Algorithm) {
   const date = new Date(dateString);
   const stops = await getStops(filename);
 
   console.log(`Loading ${filename}`);
 
-  const feed = await loadGTFS(fs.createReadStream(filename));
-  const network = createNetwork(feed, date);
-
-  // every station is written as a fixed width code, so one of another width would run into the
-  // station after it and the whole line would come back wrong
-  checkCodeWidths(network.stopIds);
+  const timetable = await loadTimetable(filename, date, algorithm);
 
   if (!canShareMemory) {
     console.warn("SharedArrayBuffer is not available, so each worker will be given a copy of the timetable");
@@ -51,22 +50,16 @@ async function run(filename: string, dateString: string, output: string) {
     stops.length
   );
 
-  console.log(`Planning ${stops.length} stops on ${workers} workers`);
+  console.log(`Planning ${stops.length} stops on ${workers} workers with ${algorithm}`);
 
+  const started = performance.now();
   const bar = new ProgressBar("  [:current of :total] [:bar] :percent eta :eta  ", { total: stops.length });
   const workDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "transfer-patterns-"));
   const parts = Array.from({ length: workers }, (_, id) => path.join(workDir, `worker-${id}.gz`));
 
   await Promise.all(parts.map(part => new Promise<void>((resolve, reject) => {
     const worker = new Worker(WORKER, {
-      workerData: {
-        timetable: network.timetable,
-        stopIds: network.stopIds,
-        transfers: network.transfers,
-        stations: network.stations,
-        date: date.toISOString(),
-        output: part
-      }
+      workerData: { ...timetable, date: date.toISOString(), output: part } satisfies WorkerInput
     });
 
     worker.on("message", (message: string) => {
@@ -92,13 +85,45 @@ async function run(filename: string, dateString: string, output: string) {
     worker.on("error", reject);
   })));
 
-  console.log(`\nMerging into ${output}`);
+  console.log(`\nPlanned in ${((performance.now() - started) / 1000).toFixed(1)}s`);
+  console.log(`Merging into ${output}`);
 
   const { patterns, bytes } = await new TransferPatternMerge(workDir).merge(parts, output);
 
   await fs.promises.rm(workDir, { recursive: true, force: true });
 
   console.log(`${patterns.toLocaleString()} patterns, ${(bytes / 1024 / 1024).toFixed(1)}MB`);
+}
+
+/**
+ * The timetable the workers are given, which is everything they need to plan
+ */
+async function loadTimetable(
+  filename: string,
+  date: Date,
+  algorithm: Algorithm
+): Promise<WorkerTimetable> {
+  if (algorithm === "csa") {
+    const shared = shareTimetable(await loadGtfs(fs.createReadStream(filename)), date);
+
+    // every station is written as a fixed width code, so one of another width would run into the
+    // station after it and the whole line would come back wrong
+    checkCodeWidths(shared.stations);
+
+    return { algorithm, timetable: shared };
+  }
+
+  const network = createNetwork(await loadGTFS(fs.createReadStream(filename)), date);
+
+  checkCodeWidths(network.stopIds);
+
+  return {
+    algorithm,
+    timetable: network.timetable,
+    stopIds: network.stopIds,
+    transfers: network.transfers,
+    stations: network.stations
+  };
 }
 
 /**
@@ -135,13 +160,25 @@ async function getStops(filename: string): Promise<StopID[]> {
   return stops;
 }
 
-if (process.argv[2] && process.argv[3]) {
-  run(process.argv[2], process.argv[3], process.argv[4] ?? "transfer-patterns.br")
+const { positionals, values } = parseArgs({
+  allowPositionals: true,
+  options: {
+    algorithm: { type: "string", default: "raptor" }
+  }
+});
+
+if (values.algorithm !== "raptor" && values.algorithm !== "csa") {
+  console.log(`Unknown algorithm ${values.algorithm}, which should be raptor or csa.`);
+  process.exit(1);
+}
+else if (positionals[0] && positionals[1]) {
+  run(positionals[0], positionals[1], positionals[2] ?? "transfer-patterns.br", values.algorithm)
     .catch(e => { console.error(e); process.exit(1); });
 }
 else {
   console.log(
     "Please specify a GTFS file and date, and optionally where to write the patterns: a name " +
-    "ending .br is brotli, and .gz the gzip a browser can read."
+    "ending .br is brotli, and .gz the gzip a browser can read. --algorithm=csa scans for them " +
+    "with the connection scan algorithm rather than raptor."
   );
 }
