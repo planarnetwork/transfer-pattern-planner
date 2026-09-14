@@ -117,7 +117,8 @@ function add<T>(index: (Map<StopIdx, T[]> | undefined)[], origin: StopIdx, desti
   if (values === undefined) {
     byDestination.set(destination, [value]);
   }
-  else {
+  // a trip calling at a station twice would be added once for each call, and is one leg between them
+  else if (values[values.length - 1] !== value) {
     values.push(value);
   }
 }
