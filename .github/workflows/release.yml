@@ -3,7 +3,6 @@ name: Release
 on:
   push:
     branches: [master]
-    # a documentation-only commit must not attempt a release
     paths:
       - 'src/**'
       - 'test/**'
@@ -22,7 +21,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      # npm trusted publishing
       id-token: write
     steps:
       - uses: actions/checkout@v6
@@ -39,8 +37,6 @@ jobs:
       - run: npm test
       - run: npm run build
 
-      # Pending changesets become a "Version packages" pull request, and merging it publishes, so the
-      # version bump and the publish cannot come apart. With nothing pending this step does nothing.
       - uses: changesets/action@v1
         with:
           version: npx changeset version

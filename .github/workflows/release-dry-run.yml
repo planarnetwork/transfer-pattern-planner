@@ -16,9 +16,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      # what this pull request would release; no changeset is a legitimate answer
       - run: npx changeset status --since=origin/master
         continue-on-error: true
-      # a broken `files` or `exports` shows up here rather than during a release. The registry is not
-      # contacted, as `npm publish --dry-run` refuses a version that is already published
       - run: npm pack --dry-run

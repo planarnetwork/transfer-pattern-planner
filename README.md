@@ -307,9 +307,6 @@ npm test
 
 If you would like to send a pull request please write your contribution in TypeScript and if possible, add a test.
 
-A change that should reach users needs a changeset: run `npm run changeset` and commit the file it
-writes. Merging to master opens a "Version packages" pull request, and merging that publishes.
-
 ## Nomenclature
 
 Three things are easy to confuse, so they are named apart:
