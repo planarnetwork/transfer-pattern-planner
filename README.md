@@ -82,9 +82,10 @@ the GB rail feed for 15 September 2026, planning 3,018 stations on 126 workers:
 |------------------|--------------|--------------|
 | planning         | 26.5-30.4s   | 17.7s        |
 | patterns         | 34.6 million | 36.2 million |
-| file             | 32.6MB       | 33.5MB       |
+| file             | 25.6MB       | 26.3MB       |
 
-The merge that follows takes about four minutes either way.
+Merging the workers' files into one takes about half a minute either way, and a whole run about a
+minute.
 
 The pieces it is built from are published too, for a caller that wants to arrange the work
 differently - over several days, or split across machines, which is what the nightly build of the
@@ -137,7 +138,7 @@ line above and what follows it:
 3ELYNRW           <- LST CBG, then ELY NRW
 ```
 
-The file is brotli compressed. A national feed comes to about 33MB for 34 million patterns, which
+The file is brotli compressed. A national feed comes to about 26MB for 34 million patterns, which
 `PatternLoader` reads into a `TransferTreeRepository` of the stations between each pair of ends.
 
 Naming the output `.gz` writes gzip instead, which is larger and is what a browser can decompress.
